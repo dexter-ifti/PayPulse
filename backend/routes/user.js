@@ -1,19 +1,20 @@
 const express = require('express');
+
+const router = express.Router();
 const zod = require('zod');
-const { JWT_SECRET } = require('../config');
+const {JWT_SECRET}  = require('../config');
 const { User, Account } = require('../db');
 const jwt = require('jsonwebtoken');
-const authMiddleware = require('../middleware');
+const {authMiddleware} = require('../middleware');
 
 const signup_schema = zod.object({
     username: zod.string().email(),
-    firstname: zod.string().max(50),
-    lastname: zod.string().max(50),
+    firstName: zod.string().max(50),
+    lastName: zod.string().max(50),
     password: zod.string().min(6)
 });
 
 
-const router = express.Router();
 
 router.post('/signup', async (req, res) => {
 
@@ -35,8 +36,8 @@ router.post('/signup', async (req, res) => {
     }
     const user = await User.create({
         username: req.body.username,
-        firstname: req.body.firstname,
-        lastname: req.body.lastname,
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
         password: req.body.password
     });
 
@@ -47,12 +48,10 @@ router.post('/signup', async (req, res) => {
         balance : Math.floor(Math.random() * 100000 + 1)
     })
 
-
     const token = jwt.sign({
-        userId : user._id
+        userId
     }, JWT_SECRET);
 
-    
     res.status(200).send({
         message: 'User created successfully',
         token: token
@@ -92,8 +91,8 @@ router.post('/signin', async (req, res) => {
 })
 
 const update_schema = zod.object({
-    firstname: zod.string().max(50).optional(),
-    lastname: zod.string().max(50).optional(),
+    firstName: zod.string().max(50).optional(),
+    lastName: zod.string().max(50).optional(),
     password: zod.string().min(6).optional()
 })
 
@@ -120,11 +119,11 @@ router.get("/bulk", async (req, res) => {
 
     const users = await User.find({
         $or: [{
-            firstname: {
+            firstName: {
                 "$regex": filter
             }
         }, {
-            lastname: {
+            lastName: {
                 "$regex": filter
             }
         }]
@@ -133,8 +132,8 @@ router.get("/bulk", async (req, res) => {
     res.json({
         user: users.map(user => ({
             username: user.username,
-            firstname: user.firstname,
-            lastname: user.lastname,
+            firstName: user.firstName,
+            lastName: user.lastName,
             _id: user._id
         }))
     })
