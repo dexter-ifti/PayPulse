@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
 
-mongoose.connect('mongodb+srv://dexter_ifti:67XnVWNvgjMo963f@cluster0.o0es3zy.mongodb.net/pay');
+mongoose.connect('mongodb+srv://dexter_ifti:67XnVWNvgjMo963f@cluster0.o0es3zy.mongodb.net/paytm');
 
 
-const schema = new mongoose.Schema({
+
+const userSchema = new mongoose.Schema({
     username : {
         type: String,
         required: true,
@@ -13,14 +14,13 @@ const schema = new mongoose.Schema({
         maxlength: 30,
         lowercase: true
     },
-    firstname : {
+    firstName : {
         type : String,
         required : true,
         trim : true,
         maxlength: 50
-    },
-        
-    lastname: {
+    }, 
+    lastName: {
         type: String,
         required: true,
         trim : true,
@@ -45,8 +45,7 @@ const acc_schema = new mongoose.Schema({
     }
 })
 
-
-const User = mongoose.model('User', schema);
+const User = mongoose.model('User', userSchema);
 
 const Account = mongoose.model('Account', acc_schema);
 
