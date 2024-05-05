@@ -8,7 +8,7 @@ function SignUp() {
   const [lastName, setLastName] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const naigate = useNavigate();
+  const navigate = useNavigate();
   return (
     <div className='bg-slate-300 h-screen flex justify-center'>
       <div className='flex flex-col justify-center'>
@@ -23,14 +23,14 @@ function SignUp() {
           {/* <InputBox onChange={(e) => {setPassword(e.target.value)}} forN={'pass'} holder={"Confirm Your Password"} /> */}
           <div className='pt-4'>
             <Button onClick={async () => {
-              const response = await axios.post('http://localhost:5173/api/v1/user/signup', {
+              const response = await axios.post('http://localhost:3000/api/v1/user/signup', {
                 username,
                 firstName,
                 lastName,
                 password
               });
               localStorage.setItem('token', response.data.token);
-              naigate('/dashboard');
+              navigate('/dashboard');
             }} label={"Sign Up"} />
             </div>
           
