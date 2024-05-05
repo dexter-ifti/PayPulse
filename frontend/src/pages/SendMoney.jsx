@@ -5,10 +5,10 @@ import { useSearchParams } from 'react-router-dom'
 
 const SendMoney = () => {
 
-  cosnt [searchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const id = searchParams.get('id');
   const name = searchParams.get('name');
-  cosnt [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState(0);
 
 
   return <div className="flex justify-center h-screen bg-gray-100">
