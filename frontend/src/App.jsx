@@ -1,20 +1,17 @@
-import React from 'react'
-import { SignUp, SignIn, Dashboard, SendMoney } from './pages'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import {BrowserRouter, Routes, Route} from 'react-router-dom/'
+import { Signup, Signin, Dashboard, SendMoney } from './pages'
+
 function App() {
 
   return (
-    <>
-      <BrowserRouter>
+    <BrowserRouter>
         <Routes>
-          <Route path='/' element={<SignIn />} />
-          <Route path='/signup' element={<SignUp />} />
-          <Route path='/signin' element={<SignIn />} />
-          <Route path='/dashboard' element={<Dashboard />} />
-          <Route path='/send' element={<SendMoney />} />
+          <Route path='/signup' element = {<Signup />} />
+          <Route path='/signin' element = {<Signin />} />
+          <Route path='/dashboard' element = {<Dashboard />} />
+          <Route path='/send' element = {<SendMoney />} />
         </Routes>
-      </BrowserRouter>
-    </>
+    </BrowserRouter>
   )
 }
 

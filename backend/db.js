@@ -1,56 +1,51 @@
 const mongoose = require('mongoose');
 
-mongoose.connect('mongodb+srv://dexter_ifti:67XnVWNvgjMo963f@cluster0.o0es3zy.mongodb.net/paytm');
 
+mongoose.connect('mongodb://localhost:27017/user');
 
-
-const userSchema = new mongoose.Schema({
-    username : {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-        minlength: 3,
-        maxlength: 30,
-        lowercase: true
+const userShcema = mongoose.Schema({
+    username: {
+        type : String,
+        required : true,
+        unique : true,
+        trim : true,
+        minLength : 3
+    },
+    password: {
+        type : String,
+        required : true,
+        trim : true,
+        minLength : 3
     },
     firstName : {
         type : String,
         required : true,
         trim : true,
-        maxlength: 50
+        minLength : 3
     }, 
-    lastName: {
-        type: String,
-        required: true,
+    lastName : {
+        type : String,
+        required : true,
         trim : true,
-        maxlength: 50
+        minLength : 3
     },
-    password: {
-        type: String,
-        required: true,
-        minlength: 6
-    }
 });
 
-const acc_schema = new mongoose.Schema({
+const User = mongoose.model('User', userShcema);
+
+
+const accountSchema = mongoose.Schema({
     userId : {
-        type: mongoose.Schema.Types.ObjectId,
+        type : mongoose.Schema.Types.ObjectId,
         ref : 'User',
-        required: true,
+        required : true,
     },
-    balance: {
-        type: Number,
-        required: true
+    balance : {
+        type : Number,
+        required : true
     }
 })
 
-const User = mongoose.model('User', userSchema);
+const Account = mongoose.model('Account', accountSchema);
 
-const Account = mongoose.model('Account', acc_schema);
-
-
-module.exports = {
-    User,
-    Account
-};
+module.exports = {User, Account};

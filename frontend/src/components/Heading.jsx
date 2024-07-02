@@ -2,7 +2,7 @@ import React from 'react'
 
 function Heading({label}) {
   return (
-    <div className='font-bold text-4xl pt-6 text-center'>{label}</div>
+    <h1 className='text-4xl font-bold pt-6'>{label}</h1 >
   )
 }
 
