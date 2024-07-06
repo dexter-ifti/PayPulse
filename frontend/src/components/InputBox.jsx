@@ -8,7 +8,7 @@ function InputBox({label, placeholder, onChange}) {
     </div>
     <input onChange={onChange}
     type="text" placeholder={placeholder}
-    className='w-full px-2 py-1 border-round'/>
+    className='w-full px-2 py-1 border-round text-sky-800'/>
     </>
   )
 }
