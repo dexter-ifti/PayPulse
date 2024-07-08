@@ -45,7 +45,7 @@ const SendMoney = () => {
               />
             </div>
             <button onClick={() => {
-              axios.post("/api/v1/account/transfer", {
+              axios.post("https://paypulse-zyer.onrender.com/api/v1/account/transfer", {
                 to: id,
                 amount
               }, {

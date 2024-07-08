@@ -26,7 +26,7 @@ function Signup() {
            label={"Password"} placeholder={"123456"} />
           <div className="pt-4">
             <Button onClick = {async () => {
-              const response = await axios.post('/api/v1/user/signup', {
+              const response = await axios.post('https://paypulse-zyer.onrender.com/api/v1/user/signup', {
                 firstName,
                 lastName,
                 username,
