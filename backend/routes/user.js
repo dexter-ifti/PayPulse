@@ -81,6 +81,7 @@ router.post('/signin', async (req, res) => {
     })
 
     if(!user){
+        alert("User not found")
         res.status(411).json({
             message: "User not found"
         })
