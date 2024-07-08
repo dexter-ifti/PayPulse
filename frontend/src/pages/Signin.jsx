@@ -19,7 +19,7 @@ function Signin() {
           label={"Password"} placeholder={"123456"} />
           <div className="pt-4">
             <Button onClick={() => {
-              const response = axios.post('api/v1/user/signin', {
+              const response = axios.post('/api/v1/user/signin', {
                 username,
                 password
             });
