@@ -1,3 +1,7 @@
 
 ## Build a basic version of PayTM
-<!-- GitAds-Verify: 6AIN2E2TVL7RTKLTVJR7BP3JT8VL5XD4 -->
+
+## GitAds Sponsored
+[![Sponsored by GitAds](https://gitads.dev/v1/ad-serve?source=dexter-ifti/paypulse@github)](https://gitads.dev/v1/ad-track?source=dexter-ifti/paypulse@github)
+
+
