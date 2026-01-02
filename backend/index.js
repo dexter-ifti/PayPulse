@@ -40,7 +40,9 @@ async function startServer() {
     });
 
     console.log("Connected to MongoDB");
-
+    app.get("/", (req, res) => {
+      res.send("Server is running");
+    });
     app.use("/api/v1", rootRouter);
 
     app.listen(port, () => {
