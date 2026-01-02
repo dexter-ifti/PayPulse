@@ -33,6 +33,9 @@ app.use(express.json());
 
 const port = process.env.PORT || 4000;
 
+app.get("/", (req, res) => {
+  res.send("Server is running");
+});
 async function startServer() {
   try {
     await mongoose.connect(process.env.DATABASE_URL, {
@@ -40,9 +43,6 @@ async function startServer() {
     });
 
     console.log("Connected to MongoDB");
-    app.get("/", (req, res) => {
-      res.send("Server is running");
-    });
     app.use("/api/v1", rootRouter);
 
     app.listen(port, () => {
