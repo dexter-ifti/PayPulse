@@ -1,9 +1,16 @@
 import React from 'react'
 
-function Button({label, onClick}) {
+function Button({label, onClick, disabled = false}) {
   return (
-      <button onClick={onClick} type="button" className="py-2.5 px-5 me-2 mb-2 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">{label}</button>
+    <button 
+      onClick={onClick} 
+      disabled={disabled}
+      type="button" 
+      className="w-full py-3 px-6 text-base font-semibold text-white bg-gradient-to-r from-orange-500 to-red-600 rounded-xl hover:from-orange-600 hover:to-red-700 focus:outline-none focus:ring-4 focus:ring-orange-500/50 transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+    >
+      {label}
+    </button>
   )
 }
 
-export default Button
+export default Button;
