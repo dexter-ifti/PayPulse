@@ -9,16 +9,16 @@ const SendMoney = () => {
   const name = searchParams.get("name");
   const [amount, setAmount] = useState(0);
   const [loading, setLoading] = useState(false);
-  
+
   const handleTransfer = async () => {
     if (!amount || amount <= 0) {
       alert("Please enter a valid amount");
       return;
     }
-    
+
     setLoading(true);
     try {
-      await axios.post("https://paypulse-zyer.onrender.com/api/v1/account/transfer", {
+      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/v1/account/transfer`, {
         to: id,
         amount
       }, {
@@ -35,15 +35,15 @@ const SendMoney = () => {
       setLoading(false);
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex justify-center items-center p-4 overflow-hidden">
       {/* Animated background circles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-96 h-96 bg-orange-500/20 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-red-600/20 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-red-600/20 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
-      
+
       <div className="relative z-10 w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -58,10 +58,10 @@ const SendMoney = () => {
         <div className="rounded-2xl bg-slate-800/50 backdrop-blur-sm border border-slate-700 shadow-2xl hover:border-orange-500/50 transition-all duration-300">
           {/* Decorative top bar */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-red-600 rounded-t-2xl"></div>
-          
+
           <div className="p-8">
             <h2 className="text-3xl font-bold text-center text-white mb-8">Send Money</h2>
-            
+
             {/* Recipient Info */}
             <div className="flex items-center space-x-4 mb-8 p-4 bg-slate-700/50 rounded-xl border border-slate-600">
               <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg">
@@ -72,7 +72,7 @@ const SendMoney = () => {
                 <h3 className="text-xl font-semibold text-white">{name}</h3>
               </div>
             </div>
-            
+
             {/* Amount Input */}
             <div className="space-y-6">
               <div className="space-y-2">
@@ -91,16 +91,16 @@ const SendMoney = () => {
                   min="1"
                 />
               </div>
-              
-              <button 
+
+              <button
                 onClick={handleTransfer}
                 disabled={loading}
                 className="w-full h-12 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-red-700 transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {loading ? "Processing..." : "Initiate Transfer"}
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => navigate('/dashboard')}
                 className="w-full h-12 bg-slate-700/50 text-white rounded-xl font-semibold hover:bg-slate-600/50 transition-all duration-300 border border-slate-600"
               >
@@ -109,7 +109,7 @@ const SendMoney = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Security Badge */}
         <div className="mt-6 text-center">
           <div className="inline-block bg-slate-800/30 backdrop-blur-sm px-6 py-2 rounded-full border border-slate-700">

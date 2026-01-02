@@ -7,15 +7,15 @@ function Signin() {
   const [username, setUserName] = React.useState('');
   const [password, setPassword] = React.useState('');
   const navigate = useNavigate();
-  
+
   return (
     <div className='min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex justify-center items-center p-4 overflow-hidden'>
       {/* Animated background circles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-96 h-96 bg-orange-500/20 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-red-600/20 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-red-600/20 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
-      
+
       <div className="flex flex-col justify-center relative z-10 w-full max-w-md">
         {/* Logo and Brand */}
         <div className="text-center mb-8">
@@ -31,41 +31,41 @@ function Signin() {
         <div className='rounded-2xl bg-slate-800/50 backdrop-blur-sm border border-slate-700 w-full text-center p-8 shadow-2xl hover:border-orange-500/50 transition-all duration-300'>
           {/* Decorative top bar with gradient */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-red-600 rounded-t-2xl"></div>
-          
+
           <Heading label={"Sign in"} />
           <SubHeading label={"Enter your credentials to access your account"} />
-          
+
           <div className="space-y-4 mt-6">
-            <InputBox 
+            <InputBox
               onChange={e => setUserName(e.target.value)}
-              label={"Email"} 
-              placeholder={"John@gmail.com"} 
+              label={"Email"}
+              placeholder={"John@gmail.com"}
             />
-            <InputBox 
+            <InputBox
               onChange={e => setPassword(e.target.value)}
-              label={"Password"} 
-              placeholder={"123456"} 
+              label={"Password"}
+              placeholder={"123456"}
             />
           </div>
-          
+
           <div className="pt-6">
-            <Button 
+            <Button
               onClick={async () => {
-                const response = await axios.post('https://paypulse-zyer.onrender.com/api/v1/user/signin', {
+                const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/v1/user/signin`, {
                   username,
                   password
                 });
                 localStorage.setItem('token', response.data.token);
                 navigate('/dashboard', { state: { firstName: response.data.firstName } });
-              }}  
-              label={"Sign in"} 
+              }}
+              label={"Sign in"}
             />
           </div>
-          
-          <BottomWarning 
-            label={"New Here ? Create Account !"} 
-            buttonText={"Sign up"} 
-            to={'/signup'} 
+
+          <BottomWarning
+            label={"New Here ? Create Account !"}
+            buttonText={"Sign up"}
+            to={'/signup'}
           />
         </div>
 
