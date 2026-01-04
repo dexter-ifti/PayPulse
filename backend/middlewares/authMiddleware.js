@@ -1,23 +1,26 @@
 const jwt = require('jsonwebtoken');
-const {JWT_SECRET} = require('./config');
+const {User} = require('../models/user.model');
+require('dotenv').config();
 
-function authMiddleware(req, res, next){
-    const authHeader = req.headers.authorization;
-    if(!authHeader || !authHeader.startsWith('Bearer ')){
-        return res.status(403).json({
-            message: 'Unauthorized'
-        })
-    }
-
-    const token = authHeader.split(' ')[1];
-
+async function authMiddleware(req, res, next){
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.userId = decoded.userId;
+        const token = req.cookies?.accessToken || req.header('Authorization')?.replace("Bearer ", "");
 
+        if(!token){
+            return res.status(401).json({message: "Unauthorized"});
+        }
+
+        const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+        const user = await User.findById(decodedToken?._id).select("-password -refreshToken");
+
+        if(!user){
+            return res.status(401).json({message: "Invalid Access Token"});
+        }
+
+        req.user = user;
         next();
     } catch (error) {
-        return res.status(403).json({});
+        return res.status(401).json({message: error?.message || "Invalid Access Token"});
     }
 };
 
