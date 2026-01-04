@@ -51,12 +51,27 @@ function Signin() {
           <div className="pt-6">
             <Button
               onClick={async () => {
-                const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/v1/user/signin`, {
-                  username,
-                  password
-                });
-                localStorage.setItem('token', response.data.token);
-                navigate('/dashboard', { state: { firstName: response.data.firstName } });
+                try {
+                  const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/v1/user/signin`, {
+                    username,
+                    password
+                  });
+
+                  // Store the access token (backend returns accessToken, not token)
+                  localStorage.setItem('token', response.data.accessToken);
+
+                  // Navigate to dashboard with user data
+                  navigate('/dashboard', {
+                    state: {
+                      firstName: response.data.user?.firstName,
+                      user: response.data.user
+                    }
+                  });
+                } catch (error) {
+                  // Handle signin errors
+                  const errorMessage = error.response?.data?.message || 'Sign in failed. Please check your credentials.';
+                  alert(errorMessage);
+                }
               }}
               label={"Sign in"}
             />

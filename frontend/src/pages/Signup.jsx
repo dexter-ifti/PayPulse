@@ -63,14 +63,22 @@ function Signup() {
           <div className="pt-6">
             <Button
               onClick={async () => {
-                const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/v1/user/signup`, {
-                  firstName,
-                  lastName,
-                  username,
-                  password
-                });
-                localStorage.setItem('token', response.data.token);
-                navigate('/dashboard', { state: { firstName } });
+                try {
+                  const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/v1/user/signup`, {
+                    firstName,
+                    lastName,
+                    username,
+                    password
+                  });
+
+                  // Signup successful - redirect to signin page
+                  alert(response.data.message || 'Account created successfully! Please sign in.');
+                  navigate('/signin', { state: { username } });
+                } catch (error) {
+                  // Handle signup errors
+                  const errorMessage = error.response?.data?.message || 'Signup failed. Please try again.';
+                  alert(errorMessage);
+                }
               }}
               label={"Sign up"}
             />
