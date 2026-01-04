@@ -1,14 +1,20 @@
-const { Account } = require('../models');
+const { Account } = require('../models/account.model');
 const { mongoose } = require('mongoose');
 
 const getBalance = async (req, res) => {
-    const account = await Account.findOne({
-        userId: req.userId
-    });
-
-    res.json({
-        balance: account.balance
-    });
+    try {
+        const account = await Account.findOne({
+            userId: req.user._id
+        });
+    
+        res.json({
+            balance: account.balance
+        });    
+    } catch (error) {
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
 };
 
 const transfer = async (req, res) => {
