@@ -8,17 +8,11 @@ const rootRouter = require("./routes/index");
 
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://pay-pulse-roan.vercel.app"
-];
 
 app.use('/*', cors({
   origin: '*'
 }))
 
-// 👇 THIS LINE IS CRITICAL
-app.options("*", cors());
 
 app.use(express.json());
 
