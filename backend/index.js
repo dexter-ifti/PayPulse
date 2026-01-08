@@ -13,18 +13,9 @@ const allowedOrigins = [
   "https://pay-pulse-roan.vercel.app"
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow non-browser tools
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error("CORS not allowed"));
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: false
-}));
+app.use('/*', cors({
+  origin: '*'
+}))
 
 // 👇 THIS LINE IS CRITICAL
 app.options("*", cors());
