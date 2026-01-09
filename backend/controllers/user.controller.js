@@ -28,11 +28,11 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
         const user = await User.findById(userId);
         const accessToken = user.generateAccessToken();
         const refreshToken = user.generateRefreshToken();
-        
-        user.refreshToken = refreshToken;
-        await user.save({ validateBeforeSave : false})
 
-        return {accessToken, refreshToken}
+        user.refreshToken = refreshToken;
+        await user.save({ validateBeforeSave: false })
+
+        return { accessToken, refreshToken }
     } catch (error) {
         console.log(error);
         throw error;
@@ -72,7 +72,7 @@ const signup = async (req, res) => {
         "-password -refreshToken"
     )
 
-    if(!createdUer){
+    if (!createdUer) {
         return res.status(500).json({
             message: "Something went wrong"
         })
@@ -118,7 +118,7 @@ const signin = async (req, res) => {
     }
 
     const userId = user._id;
-    const {accessToken, refreshToken} = await generateAccessTokenAndRefreshToken(userId);
+    const { accessToken, refreshToken } = await generateAccessTokenAndRefreshToken(userId);
 
     const loggedInUser = await User.findById(userId).select(
         "-password -refreshToken"
@@ -126,19 +126,19 @@ const signin = async (req, res) => {
 
     const options = {
         httpOnly: true,
-        secure: true
+        secure: process.env.NODE_ENV === 'production'
     }
 
-    
+
 
     res
-    .status(200)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
-    .json({
-        message: "User signed in successfully",
-        user: loggedInUser, accessToken, refreshToken
-    });
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json({
+            message: "User signed in successfully",
+            user: loggedInUser, accessToken, refreshToken
+        });
 };
 
 
@@ -148,42 +148,42 @@ const logoutUser = async (req, res) => {
         await User.findByIdAndUpdate(
             userId,
             {
-                $unset : {
-                    refreshToken : 1
+                $unset: {
+                    refreshToken: 1
                 }
             },
             {
-                new : true
+                new: true
             }
         )
 
         const options = {
-            httpOnly : true,
-            secure : true
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production'
         }
 
         return res
-        .status(200)
-        .clearCookie("accessToken", options)
-        .clearCookie("refreshToken", options)
-        .json({
-            message : "User logged out successfully"
-        })
+            .status(200)
+            .clearCookie("accessToken", options)
+            .clearCookie("refreshToken", options)
+            .json({
+                message: "User logged out successfully"
+            })
     } catch (error) {
         return res.status(500).json({
-            message : "Something went wrong"
+            message: "Something went wrong"
         })
     }
 }
 
 const refreshAccessToken = async (req, res) => {
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
-    if(!incomingRefreshToken){
+    if (!incomingRefreshToken) {
         return res
-                .status(401)
-                .json({
-                    message : "Unauthorized"
-                })
+            .status(401)
+            .json({
+                message: "Unauthorized"
+            })
     }
 
     try {
@@ -194,44 +194,44 @@ const refreshAccessToken = async (req, res) => {
 
         const user = await User.findById(decodedToken._id);
 
-        if(!user){
+        if (!user) {
             return res
-                    .status(401)
-                    .json({
-                        message : "Invalid refresh token"
-                    })
+                .status(401)
+                .json({
+                    message: "Invalid refresh token"
+                })
         }
 
-        if(incomingRefreshToken !== user?.refreshToken){
+        if (incomingRefreshToken !== user?.refreshToken) {
             return res
-                    .status(401)
-                    .json({
-                        message : "Refresh token is expired or invalid"
-                    })
+                .status(401)
+                .json({
+                    message: "Refresh token is expired or invalid"
+                })
         }
 
         const options = {
-            httpOnly : true,
-            secure : true
+            httpOnly: true,
+            secure: true
         }
 
-        const {accessToken, newRefreshToken } = await generateAccessTokenAndRefreshToken(user._id);
+        const { accessToken, newRefreshToken } = await generateAccessTokenAndRefreshToken(user._id);
 
         return res
-                .status(200)
-                .cookie("accessToken", accessToken, options)
-                .cookie("refreshToken", newRefreshToken, options)
-                .json({
-                    message : "Access token refreshed successfully",
-                    accessToken,
-                    refreshToken : newRefreshToken
-                })
+            .status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", newRefreshToken, options)
+            .json({
+                message: "Access token refreshed successfully",
+                accessToken,
+                refreshToken: newRefreshToken
+            })
     } catch (error) {
         return res
-                .status(500)
-                .json({
-                    message : "Something went wrong"
-                })
+            .status(500)
+            .json({
+                message: "Something went wrong"
+            })
     }
 }
 
@@ -280,10 +280,10 @@ const bulkSearch = async (req, res) => {
 
 const getCurrentUser = async (req, res) => {
     return res
-    .status(200)
-    .json({
-        user : req.user
-    });
+        .status(200)
+        .json({
+            user: req.user
+        });
 }
 
 module.exports = {
