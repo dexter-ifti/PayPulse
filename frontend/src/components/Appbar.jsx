@@ -13,21 +13,21 @@ const Appbar = ({ username = 'Dexter' }) => {
         {},
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
           withCredentials: true, // Important for cookie handling
         }
       );
 
       // Clear local storage
-      localStorage.removeItem('token');
+      localStorage.removeItem('accessToken');
 
       // Redirect to signin page
       navigate('/signin');
     } catch (error) {
       console.error('Logout error:', error);
       // Even if the backend call fails, clear local storage and redirect
-      localStorage.removeItem('token');
+      localStorage.removeItem('accessToken');
       navigate('/signin');
     }
   };

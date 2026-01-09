@@ -13,7 +13,7 @@ function Dashboard() {
       try {
         const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/v1/account/balance`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
         });
         setBalance(response.data.balance.toLocaleString());
