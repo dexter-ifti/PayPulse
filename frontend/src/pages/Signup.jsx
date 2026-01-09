@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Heading, SubHeading, InputBox, Button, BottomWarning } from '../components'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +10,15 @@ function Signup() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      // Redirect to dashboard if user is already logged in
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   return (
     <div className='min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex justify-center items-center p-4 overflow-hidden'>

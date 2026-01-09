@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Heading, SubHeading, InputBox, Button, BottomWarning } from '../components'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +8,15 @@ function Signin() {
   const [password, setPassword] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      // Redirect to dashboard if user is already logged in
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   return (
     <div className='min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex justify-center items-center p-4 overflow-hidden'>
@@ -83,8 +92,8 @@ function Signin() {
                     password
                   });
 
-                  // Store the access token (backend returns accessToken, not token)
-                  localStorage.setItem('token', response.data.accessToken);
+                  // Store the access token with consistent key name
+                  localStorage.setItem('accessToken', response.data.accessToken);
 
                   // Navigate to dashboard with user data
                   navigate('/dashboard', {
