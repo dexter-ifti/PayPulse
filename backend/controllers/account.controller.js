@@ -6,10 +6,10 @@ const getBalance = async (req, res) => {
         const account = await Account.findOne({
             userId: req.user._id
         });
-    
+
         res.json({
             balance: account.balance
-        });    
+        });
     } catch (error) {
         return res.status(500).json({
             message: "Internal server error"
@@ -23,7 +23,7 @@ const transfer = async (req, res) => {
     session.startTransaction();
     const { amount, to } = req.body;
 
-    const account = await Account.findOne({ userId: req.userId }).session(session);
+    const account = await Account.findOne({ userId: req.user._id }).session(session);
 
     if (!account || account.balance < amount) {
         await session.abortTransaction();
@@ -41,7 +41,7 @@ const transfer = async (req, res) => {
         });
     }
 
-    await Account.updateOne({ userId: req.userId }, { $inc: { balance: -amount } }).session(session);
+    await Account.updateOne({ userId: req.user._id }, { $inc: { balance: -amount } }).session(session);
     await Account.updateOne({ userId: to }, { $inc: { balance: amount } }).session(session);
 
     await session.commitTransaction();
