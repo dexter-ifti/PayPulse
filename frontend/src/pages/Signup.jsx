@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Heading, SubHeading, InputBox, Button, BottomWarning } from '../components'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast'
 
 function Signup() {
   const [firstName, setFirstName] = useState('');
@@ -98,6 +99,9 @@ function Signup() {
           <div className="pt-6">
             <Button
               onClick={async () => {
+                // Show loading toast with server startup message
+                const loadingToast = toast.loading('Creating account... Server may take a moment to start up.');
+
                 try {
                   const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/v1/user/signup`, {
                     firstName,
@@ -106,13 +110,17 @@ function Signup() {
                     password
                   });
 
+                  // Dismiss loading toast
+                  toast.dismiss(loadingToast);
                   // Signup successful - redirect to signin page
-                  alert(response.data.message || 'Account created successfully! Please sign in.');
+                  toast.success(response.data.message || 'Account created successfully! Please sign in.');
                   navigate('/signin', { state: { username } });
                 } catch (error) {
+                  // Dismiss loading toast
+                  toast.dismiss(loadingToast);
                   // Handle signup errors
                   const errorMessage = error.response?.data?.message || 'Signup failed. Please try again.';
-                  alert(errorMessage);
+                  toast.error(errorMessage);
                 }
               }}
               label={"Sign up"}

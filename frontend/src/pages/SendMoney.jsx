@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom"
+import toast from 'react-hot-toast'
 
 const SendMoney = () => {
   const [searchParams] = useSearchParams();
@@ -12,7 +13,7 @@ const SendMoney = () => {
 
   const handleTransfer = async () => {
     if (!amount || amount <= 0) {
-      alert("Please enter a valid amount");
+      toast.error("Please enter a valid amount");
       return;
     }
 
@@ -26,10 +27,10 @@ const SendMoney = () => {
           Authorization: "Bearer " + localStorage.getItem("accessToken")
         }
       });
-      alert("Transfer successful!");
+      toast.success("Transfer successful!");
       navigate('/dashboard');
     } catch (error) {
-      alert("Transfer failed. Please try again.");
+      toast.error(error.response?.data?.message || "Transfer failed. Please try again.");
       console.error(error);
     } finally {
       setLoading(false);

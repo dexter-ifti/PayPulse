@@ -1,6 +1,7 @@
 import React from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 const Appbar = ({ username = 'Dexter' }) => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const Appbar = ({ username = 'Dexter' }) => {
       // Clear local storage
       localStorage.removeItem('accessToken');
 
+      toast.success("Logout successful");
       // Redirect to signin page
       navigate('/signin');
     } catch (error) {
