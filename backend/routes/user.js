@@ -10,6 +10,6 @@ router.post('/logout', authMiddleware, userController.logoutUser);
 router.post('/refresh-token', authMiddleware, userController.refreshAccessToken);
 router.get('/current-user', authMiddleware, userController.getCurrentUser);
 router.put('/', authMiddleware, userController.updateUser);
-router.get('/bulk', userController.bulkSearch);
+router.get('/bulk', authMiddleware, userController.bulkSearch);
 
 module.exports = router;
