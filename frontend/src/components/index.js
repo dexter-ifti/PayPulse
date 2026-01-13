@@ -6,7 +6,8 @@ import BottomWarning from './BottomWarning'
 import Appbar from './Appbar'
 import Balance from './Balance'
 import Users from './Users'
+import TransactionHistory from './TransactionHistory'
 
 
 
-export { Heading, SubHeading, InputBox, Button, BottomWarning, Appbar, Balance, Users};
+export { Heading, SubHeading, InputBox, Button, BottomWarning, Appbar, Balance, Users, TransactionHistory };
