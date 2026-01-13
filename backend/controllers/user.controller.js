@@ -256,17 +256,28 @@ const updateUser = async (req, res) => {
 
 const bulkSearch = async (req, res) => {
     const filter = req.query.filter || "";
-    const users = await User.find({
+
+    // Build query to exclude current user if authenticated
+    const query = {
         $or: [{
             firstName: {
-                "$regex": filter
+                "$regex": filter,
+                "$options": "i"  // case-insensitive search
             }
         }, {
             lastName: {
-                "$regex": filter
+                "$regex": filter,
+                "$options": "i"
             }
         }]
-    });
+    };
+
+    // Exclude current user if authenticated
+    if (req.user && req.user._id) {
+        query._id = { $ne: req.user._id };
+    }
+
+    const users = await User.find(query);
 
     res.json({
         user: users.map(user => ({
