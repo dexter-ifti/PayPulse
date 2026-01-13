@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Appbar, Balance, Users } from '../components'
+import { Appbar, Balance, Users, TransactionHistory } from '../components'
 import { useLocation } from 'react-router-dom'
 import axios from 'axios';
 
@@ -38,7 +38,10 @@ function Dashboard() {
         <Appbar username={firstName} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Balance value={balance} />
-          <Users />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <Users />
+            <TransactionHistory />
+          </div>
         </div>
       </div>
     </div>

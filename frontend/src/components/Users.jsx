@@ -8,7 +8,11 @@ const Users = () => {
   const [filter, setFilter] = useState('');
 
   useEffect(() => {
-    axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/v1/user/bulk?filter=` + filter)
+    axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/v1/user/bulk?filter=` + filter, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+      },
+    })
       .then(response => {
         setUsers(response.data.user);
       });
