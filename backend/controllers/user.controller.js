@@ -256,6 +256,9 @@ const updateUser = async (req, res) => {
 
 const bulkSearch = async (req, res) => {
     const filter = req.query.filter || "";
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
     // Build query to exclude current user if authenticated
     const query = {
@@ -277,7 +280,14 @@ const bulkSearch = async (req, res) => {
         query._id = { $ne: req.user._id };
     }
 
-    const users = await User.find(query);
+    // Get total count for pagination
+    const totalUsers = await User.countDocuments(query);
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    // Get paginated users
+    const users = await User.find(query)
+        .skip(skip)
+        .limit(limit);
 
     res.json({
         user: users.map(user => ({
@@ -285,7 +295,15 @@ const bulkSearch = async (req, res) => {
             firstName: user.firstName,
             lastName: user.lastName,
             _id: user._id
-        }))
+        })),
+        pagination: {
+            currentPage: page,
+            totalPages: totalPages,
+            totalUsers: totalUsers,
+            limit: limit,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1
+        }
     });
 };
 
