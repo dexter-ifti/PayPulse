@@ -42,16 +42,23 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
 // Controller functions
 const signup = async (req, res) => {
     const { username, password, firstName, lastName } = req.body;
-    const success = signupSchema.safeParse({ username, password, firstName, lastName });
 
-    if (!success) {
-        return res.status(411).json({
-            message: "Email already taken / Incorrect inputs"
+    const parsed = signupSchema.safeParse({
+        username,
+        password,
+        firstName,
+        lastName,
+    });
+
+    if (!parsed.success) {
+        return res.status(400).json({
+            message: "Invalid input data",
+            errors: parsed.error.errors,
         });
     }
 
     const existingUser = await User.findOne({
-        username: req.body.username
+        username
     });
 
     if (existingUser) {
@@ -61,10 +68,10 @@ const signup = async (req, res) => {
     }
 
     const user = await User.create({
-        username: req.body.username,
-        password: req.body.password,
-        firstName: req.body.firstName,
-        lastName: req.body.lastName
+        username,
+        password,
+        firstName,
+        lastName
     });
 
     const userId = user._id;
@@ -93,9 +100,9 @@ const signup = async (req, res) => {
 const signin = async (req, res) => {
     const { username, password } = req.body;
 
-    const success = signinSchema.safeParse({ username, password });
+    const parsed = signinSchema.safeParse({ username, password });
 
-    if (!success) {
+    if (!parsed.success) {
         return res.status(411).json({
             message: "User not found"
         });
