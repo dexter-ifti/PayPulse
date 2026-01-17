@@ -75,11 +75,11 @@ const signup = async (req, res) => {
     });
 
     const userId = user._id;
-    const createdUer = await User.findById(userId).select(
+    const createdUser = await User.findById(userId).select(
         "-password -refreshToken"
     )
 
-    if (!createdUer) {
+    if (!createdUser) {
         return res.status(500).json({
             message: "Something went wrong"
         })
@@ -194,7 +194,7 @@ const refreshAccessToken = async (req, res) => {
     }
 
     try {
-        const decodedToken = jwr.verify(
+        const decodedToken = jwt.verify(
             incomingRefreshToken,
             process.env.REFRESH_TOKEN_SECRET
         )
@@ -246,7 +246,7 @@ const refreshAccessToken = async (req, res) => {
 const updateUser = async (req, res) => {
     const success = updateSchema.safeParse(req.body);
 
-    if (!success) {
+    if (!success.success) {
         return res.status(411).json({
             message: "Incorrect inputs"
         });
