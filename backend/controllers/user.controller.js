@@ -41,111 +41,125 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
 
 // Controller functions
 const signup = async (req, res) => {
-    const { username, password, firstName, lastName } = req.body;
+    try {
+        const { username, password, firstName, lastName } = req.body;
 
-    const parsed = signupSchema.safeParse({
-        username,
-        password,
-        firstName,
-        lastName,
-    });
-
-    if (!parsed.success) {
-        return res.status(400).json({
-            message: "Invalid input data",
-            errors: parsed.error.errors,
+        const parsed = signupSchema.safeParse({
+            username,
+            password,
+            firstName,
+            lastName,
         });
-    }
 
-    const existingUser = await User.findOne({
-        username
-    });
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Invalid input data",
+                errors: parsed.error.errors,
+            });
+        }
 
-    if (existingUser) {
-        return res.status(409).json({
-            message: "Email already taken"
+        const existingUser = await User.findOne({
+            username
         });
-    }
 
-    const user = await User.create({
-        username,
-        password,
-        firstName,
-        lastName
-    });
+        if (existingUser) {
+            return res.status(409).json({
+                message: "Email already taken"
+            });
+        }
 
-    const userId = user._id;
-    const createdUser = await User.findById(userId).select(
-        "-password -refreshToken"
-    )
+        const user = await User.create({
+            username,
+            password,
+            firstName,
+            lastName
+        });
 
-    if (!createdUser) {
+        const userId = user._id;
+        const createdUser = await User.findById(userId).select(
+            "-password -refreshToken"
+        )
+
+        if (!createdUser) {
+            return res.status(500).json({
+                message: "Something went wrong"
+            })
+        }
+
+
+        await Account.create({
+            userId,
+            balance: 1 + Math.floor(Math.random() * 10000000)
+        });
+
+
+        res.json({
+            message: "User created successfully"
+        });
+    } catch (error) {
+        console.log(error);
         return res.status(500).json({
             message: "Something went wrong"
         })
     }
-
-
-    await Account.create({
-        userId,
-        balance: 1 + Math.floor(Math.random() * 10000000)
-    });
-
-
-    res.json({
-        message: "User created successfully"
-    });
 };
 
 const signin = async (req, res) => {
-    const { username, password } = req.body;
+    try {
+        const { username, password } = req.body;
 
-    const parsed = signinSchema.safeParse({ username, password });
+        const parsed = signinSchema.safeParse({ username, password });
 
-    if (!parsed.success) {
-        return res.status(411).json({
-            message: "User not found"
-        });
+        if (!parsed.success) {
+            return res.status(411).json({
+                message: "Incorrect inputs"
+            });
+        }
+
+        const user = await User.findOne({ username });
+
+        if (!user) {
+            return res.status(404).json({
+                message: "Incorrect user credentials"
+            });
+        }
+
+        const isPasswordValid = await user.isPasswordCorrect(password);
+
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                message: "Incorrect user credentials"
+            });
+        }
+
+        const userId = user._id;
+        const { accessToken, refreshToken } = await generateAccessTokenAndRefreshToken(userId);
+
+        const loggedInUser = await User.findById(userId).select(
+            "-password -refreshToken"
+        )
+
+        const options = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production'
+        }
+
+
+
+        res
+            .status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshToken, options)
+            .json({
+                message: "User signed in successfully",
+                user: loggedInUser
+            });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: "Something went wrong"
+        })
     }
-
-    const user = await User.findOne({ username });
-
-    if (!user) {
-        return res.status(404).json({
-            message: "User not found"
-        });
-    }
-
-    const isPasswordValid = await user.isPasswordCorrect(password);
-
-    if (!isPasswordValid) {
-        return res.status(401).json({
-            message: "Incorrect user credentials"
-        });
-    }
-
-    const userId = user._id;
-    const { accessToken, refreshToken } = await generateAccessTokenAndRefreshToken(userId);
-
-    const loggedInUser = await User.findById(userId).select(
-        "-password -refreshToken"
-    )
-
-    const options = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production'
-    }
-
-
-
-    res
-        .status(200)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
-        .json({
-            message: "User signed in successfully",
-            user: loggedInUser, accessToken, refreshToken
-        });
 };
 
 
@@ -229,9 +243,7 @@ const refreshAccessToken = async (req, res) => {
             .cookie("accessToken", accessToken, options)
             .cookie("refreshToken", newRefreshToken, options)
             .json({
-                message: "Access token refreshed successfully",
-                accessToken,
-                refreshToken: newRefreshToken
+                message: "Access token refreshed successfully"
             })
     } catch (error) {
         return res
@@ -244,82 +256,103 @@ const refreshAccessToken = async (req, res) => {
 
 
 const updateUser = async (req, res) => {
-    const success = updateSchema.safeParse(req.body);
+    try {
+        const success = updateSchema.safeParse(req.body);
 
-    if (!success.success) {
-        return res.status(411).json({
-            message: "Incorrect inputs"
+        if (!success.success) {
+            return res.status(411).json({
+                message: "Incorrect inputs"
+            });
+        }
+
+        await User.updateOne({
+            _id: req.user._id
+        }, req.body);
+
+        res.status(200).json({
+            message: "User updated successfully"
         });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: "Something went wrong"
+        })
     }
-
-    await User.updateOne({
-        _id: req.userId
-    }, req.body);
-
-    res.status(200).json({
-        message: "User updated successfully"
-    });
 };
 
 const bulkSearch = async (req, res) => {
-    const filter = req.query.filter || "";
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    try {
+        const filter = req.query.filter || "";
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
 
-    // Build query to exclude current user if authenticated
-    const query = {
-        $or: [{
-            firstName: {
-                "$regex": filter,
-                "$options": "i"  // case-insensitive search
-            }
-        }, {
-            lastName: {
-                "$regex": filter,
-                "$options": "i"
-            }
-        }]
-    };
+        // Build query to exclude current user if authenticated
+        const query = {
+            $or: [{
+                firstName: {
+                    "$regex": filter,
+                    "$options": "i"  // case-insensitive search
+                }
+            }, {
+                lastName: {
+                    "$regex": filter,
+                    "$options": "i"
+                }
+            }]
+        };
 
-    // Exclude current user if authenticated
-    if (req.user && req.user._id) {
-        query._id = { $ne: req.user._id };
-    }
-
-    // Get total count for pagination
-    const totalUsers = await User.countDocuments(query);
-    const totalPages = Math.ceil(totalUsers / limit);
-
-    // Get paginated users
-    const users = await User.find(query)
-        .skip(skip)
-        .limit(limit);
-
-    res.json({
-        user: users.map(user => ({
-            username: user.username,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            _id: user._id
-        })),
-        pagination: {
-            currentPage: page,
-            totalPages: totalPages,
-            totalUsers: totalUsers,
-            limit: limit,
-            hasNextPage: page < totalPages,
-            hasPrevPage: page > 1
+        // Exclude current user if authenticated
+        if (req.user && req.user._id) {
+            query._id = { $ne: req.user._id };
         }
-    });
+
+        // Get total count for pagination
+        const totalUsers = await User.countDocuments(query);
+        const totalPages = Math.ceil(totalUsers / limit);
+
+        // Get paginated users
+        const users = await User.find(query)
+            .skip(skip)
+            .limit(limit);
+
+        res.json({
+            user: users.map(user => ({
+                username: user.username,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                _id: user._id
+            })),
+            pagination: {
+                currentPage: page,
+                totalPages: totalPages,
+                totalUsers: totalUsers,
+                limit: limit,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: "Something went wrong"
+        })
+    }
 };
 
 const getCurrentUser = async (req, res) => {
-    return res
-        .status(200)
-        .json({
-            user: req.user
-        });
+    try {
+        return res
+            .status(200)
+            .json({
+                user: req.user
+            });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: "Something went wrong"
+        })
+    }
 }
 
 module.exports = {
