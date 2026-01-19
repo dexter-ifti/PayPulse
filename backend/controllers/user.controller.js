@@ -53,6 +53,7 @@ const signup = async (req, res) => {
 
         if (!parsed.success) {
             return res.status(400).json({
+                success: false,
                 message: "Invalid input data",
                 errors: parsed.error.errors,
             });
@@ -64,6 +65,7 @@ const signup = async (req, res) => {
 
         if (existingUser) {
             return res.status(409).json({
+                success: false,
                 message: "Email already taken"
             });
         }
@@ -82,6 +84,7 @@ const signup = async (req, res) => {
 
         if (!createdUser) {
             return res.status(500).json({
+                success: false,
                 message: "Something went wrong"
             })
         }
@@ -94,11 +97,13 @@ const signup = async (req, res) => {
 
 
         res.json({
+            success: true,
             message: "User created successfully"
         });
     } catch (error) {
         console.log(error);
         return res.status(500).json({
+            success: false,
             message: "Something went wrong"
         })
     }
@@ -111,8 +116,10 @@ const signin = async (req, res) => {
         const parsed = signinSchema.safeParse({ username, password });
 
         if (!parsed.success) {
-            return res.status(411).json({
-                message: "Incorrect inputs"
+            return res.status(400).json({
+                success: false,
+                message: "Incorrect inputs",
+                errors: parsed.error.errors
             });
         }
 
@@ -120,6 +127,7 @@ const signin = async (req, res) => {
 
         if (!user) {
             return res.status(404).json({
+                success: false,
                 message: "Incorrect user credentials"
             });
         }
@@ -128,6 +136,7 @@ const signin = async (req, res) => {
 
         if (!isPasswordValid) {
             return res.status(401).json({
+                success: false,
                 message: "Incorrect user credentials"
             });
         }
@@ -151,12 +160,16 @@ const signin = async (req, res) => {
             .cookie("accessToken", accessToken, options)
             .cookie("refreshToken", refreshToken, options)
             .json({
+                success: true,
                 message: "User signed in successfully",
-                user: loggedInUser
+                data: {
+                    user: loggedInUser
+                }
             });
     } catch (error) {
         console.log(error);
         return res.status(500).json({
+            success: false,
             message: "Something went wrong"
         })
     }
@@ -188,10 +201,12 @@ const logoutUser = async (req, res) => {
             .clearCookie("accessToken", options)
             .clearCookie("refreshToken", options)
             .json({
+                success: true,
                 message: "User logged out successfully"
             })
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: "Something went wrong"
         })
     }
@@ -203,6 +218,7 @@ const refreshAccessToken = async (req, res) => {
         return res
             .status(401)
             .json({
+                success: false,
                 message: "Unauthorized"
             })
     }
@@ -219,6 +235,7 @@ const refreshAccessToken = async (req, res) => {
             return res
                 .status(401)
                 .json({
+                    success: false,
                     message: "Invalid refresh token"
                 })
         }
@@ -227,6 +244,7 @@ const refreshAccessToken = async (req, res) => {
             return res
                 .status(401)
                 .json({
+                    success: false,
                     message: "Refresh token is expired or invalid"
                 })
         }
@@ -243,12 +261,14 @@ const refreshAccessToken = async (req, res) => {
             .cookie("accessToken", accessToken, options)
             .cookie("refreshToken", newRefreshToken, options)
             .json({
+                success: true,
                 message: "Access token refreshed successfully"
             })
     } catch (error) {
         return res
             .status(500)
             .json({
+                success: false,
                 message: "Something went wrong"
             })
     }
@@ -260,8 +280,10 @@ const updateUser = async (req, res) => {
         const success = updateSchema.safeParse(req.body);
 
         if (!success.success) {
-            return res.status(411).json({
-                message: "Incorrect inputs"
+            return res.status(400).json({
+                success: false,
+                message: "Incorrect inputs",
+                errors: success.error.errors
             });
         }
 
@@ -270,11 +292,13 @@ const updateUser = async (req, res) => {
         }, req.body);
 
         res.status(200).json({
+            success: true,
             message: "User updated successfully"
         });
     } catch (error) {
         console.log(error);
         return res.status(500).json({
+            success: false,
             message: "Something went wrong"
         })
     }
@@ -317,24 +341,28 @@ const bulkSearch = async (req, res) => {
             .limit(limit);
 
         res.json({
-            user: users.map(user => ({
-                username: user.username,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                _id: user._id
-            })),
-            pagination: {
-                currentPage: page,
-                totalPages: totalPages,
-                totalUsers: totalUsers,
-                limit: limit,
-                hasNextPage: page < totalPages,
-                hasPrevPage: page > 1
+            success: true,
+            data: {
+                users: users.map(user => ({
+                    username: user.username,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    _id: user._id
+                })),
+                pagination: {
+                    currentPage: page,
+                    totalPages: totalPages,
+                    totalUsers: totalUsers,
+                    limit: limit,
+                    hasNextPage: page < totalPages,
+                    hasPrevPage: page > 1
+                }
             }
         });
     } catch (error) {
         console.log(error);
         return res.status(500).json({
+            success: false,
             message: "Something went wrong"
         })
     }
@@ -345,11 +373,15 @@ const getCurrentUser = async (req, res) => {
         return res
             .status(200)
             .json({
-                user: req.user
+                success: true,
+                data: {
+                    user: req.user
+                }
             });
     } catch (error) {
         console.log(error);
         return res.status(500).json({
+            success: false,
             message: "Something went wrong"
         })
     }
