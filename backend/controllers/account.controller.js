@@ -8,10 +8,14 @@ const getBalance = async (req, res) => {
         });
 
         res.json({
-            balance: account.balance
+            success: true,
+            data: {
+                balance: account.balance
+            }
         });
     } catch (error) {
         return res.status(500).json({
+            success: false,
             message: "Internal server error"
         });
     }
@@ -27,6 +31,7 @@ const transfer = async (req, res) => {
     if (req.user._id.toString() === to.toString()) {
         await session.abortTransaction();
         return res.status(400).json({
+            success: false,
             message: "Cannot transfer money to yourself"
         });
     }
@@ -36,6 +41,7 @@ const transfer = async (req, res) => {
     if (!account || account.balance < amount) {
         await session.abortTransaction();
         return res.status(400).json({
+            success: false,
             message: "Insufficient balance"
         });
     }
@@ -45,6 +51,7 @@ const transfer = async (req, res) => {
     if (!toAccount) {
         await session.abortTransaction();
         return res.status(400).json({
+            success: false,
             message: "Invalid account"
         });
     }
@@ -64,6 +71,7 @@ const transfer = async (req, res) => {
 
     await session.commitTransaction();
     res.json({
+        success: true,
         message: "Transfer successful"
     });
 };
@@ -101,11 +109,15 @@ const getTransactionHistory = async (req, res) => {
         );
 
         res.json({
-            transactions: transactionsWithDetails
+            success: true,
+            data: {
+                transactions: transactionsWithDetails
+            }
         });
     } catch (error) {
         console.error("Error fetching transaction history:", error);
         return res.status(500).json({
+            success: false,
             message: "Internal server error"
         });
     }
