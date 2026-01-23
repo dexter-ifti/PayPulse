@@ -25,7 +25,8 @@ const SendMoney = () => {
       }, {
         headers: {
           Authorization: "Bearer " + localStorage.getItem("accessToken")
-        }
+        },
+        withCredentials: true
       });
       toast.success("Transfer successful!");
       navigate('/dashboard');

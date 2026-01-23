@@ -13,17 +13,18 @@ const Users = () => {
     hasNextPage: false,
     hasPrevPage: false
   });
-  const limit = 10;
+  const limit = 5;
 
   useEffect(() => {
     axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/v1/user/bulk?filter=${filter}&page=${currentPage}&limit=${limit}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
       },
+      withCredentials: true,
     })
       .then(response => {
-        setUsers(response.data.user);
-        setPagination(response.data.pagination);
+        setUsers(response.data.data.users);
+        setPagination(response.data.data.pagination);
       });
   }, [filter, currentPage]);
 
@@ -72,8 +73,8 @@ const Users = () => {
               onClick={handlePrevPage}
               disabled={!pagination.hasPrevPage}
               className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 ${pagination.hasPrevPage
-                  ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-600 hover:to-red-700 transform hover:scale-105 shadow-md'
-                  : 'bg-slate-700 text-gray-500 cursor-not-allowed'
+                ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-600 hover:to-red-700 transform hover:scale-105 shadow-md'
+                : 'bg-slate-700 text-gray-500 cursor-not-allowed'
                 }`}
             >
               Previous
@@ -82,8 +83,8 @@ const Users = () => {
               onClick={handleNextPage}
               disabled={!pagination.hasNextPage}
               className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 ${pagination.hasNextPage
-                  ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-600 hover:to-red-700 transform hover:scale-105 shadow-md'
-                  : 'bg-slate-700 text-gray-500 cursor-not-allowed'
+                ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-600 hover:to-red-700 transform hover:scale-105 shadow-md'
+                : 'bg-slate-700 text-gray-500 cursor-not-allowed'
                 }`}
             >
               Next

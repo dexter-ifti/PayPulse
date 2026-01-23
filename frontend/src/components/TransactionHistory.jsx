@@ -14,9 +14,10 @@ function TransactionHistory() {
                         headers: {
                             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
                         },
+                        withCredentials: true,
                     }
                 );
-                setTransactions(response.data.transactions);
+                setTransactions(response.data.data.transactions);
                 setLoading(false);
             } catch (error) {
                 console.error('Error fetching transactions:', error);
@@ -96,8 +97,8 @@ function TransactionHistory() {
                                 <div className="flex items-center gap-3 flex-1">
                                     <div
                                         className={`flex items-center justify-center w-10 h-10 rounded-full ${transaction.type === 'received'
-                                                ? 'bg-green-500/20 text-green-400'
-                                                : 'bg-red-500/20 text-red-400'
+                                            ? 'bg-green-500/20 text-green-400'
+                                            : 'bg-red-500/20 text-red-400'
                                             }`}
                                     >
                                         {transaction.type === 'received' ? (
@@ -129,8 +130,8 @@ function TransactionHistory() {
                                     </p>
                                     <span
                                         className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${transaction.status === 'success'
-                                                ? 'bg-green-500/20 text-green-400'
-                                                : 'bg-red-500/20 text-red-400'
+                                            ? 'bg-green-500/20 text-green-400'
+                                            : 'bg-red-500/20 text-red-400'
                                             }`}
                                     >
                                         {transaction.status}

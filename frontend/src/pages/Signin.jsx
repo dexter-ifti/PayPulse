@@ -94,10 +94,13 @@ function Signin() {
                   const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/v1/user/signin`, {
                     username,
                     password
+                  }, {
+                    withCredentials: true // Enable cookies
                   });
 
-                  // Store the access token with consistent key name
-                  localStorage.setItem('accessToken', response.data.accessToken);
+                  // Tokens are now in httpOnly cookies, no need to store in localStorage
+                  // Store a flag to indicate user is logged in
+                  localStorage.setItem('isLoggedIn', 'true');
 
                   // Dismiss loading toast and show success
                   toast.dismiss(loadingToast);
@@ -105,8 +108,8 @@ function Signin() {
                   // Navigate to dashboard with user data
                   navigate('/dashboard', {
                     state: {
-                      firstName: response.data.user?.firstName,
-                      user: response.data.user
+                      firstName: response.data.data.user?.firstName,
+                      user: response.data.data.user
                     }
                   });
                 } catch (error) {

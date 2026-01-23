@@ -15,8 +15,9 @@ function Dashboard() {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
+          withCredentials: true,
         });
-        setBalance(response.data.balance.toLocaleString());
+        setBalance(response.data.data.balance.toLocaleString());
       } catch (error) {
         console.error("Error fetching balance:", error.response ? error.response.data : error.message);
       }
@@ -24,7 +25,7 @@ function Dashboard() {
     fetchBalance();
   }, []);
 
-  console.log(`Balance is : ${balance}`);
+  // console.log(`Balance is : ${balance}`); 
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
