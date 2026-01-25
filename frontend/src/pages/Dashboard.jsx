@@ -12,10 +12,7 @@ function Dashboard() {
     const fetchBalance = async () => {
       try {
         const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/v1/account/balance`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-          withCredentials: true,
+          withCredentials: true, // Send cookies with request
         });
         setBalance(response.data.data.balance.toLocaleString());
       } catch (error) {

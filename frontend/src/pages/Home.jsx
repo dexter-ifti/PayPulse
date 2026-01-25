@@ -4,14 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 function Home() {
     const navigate = useNavigate();
 
-    useEffect(() => {
-        // Check if user is already logged in
-        const token = localStorage.getItem('accessToken');
-        if (token) {
-            // Redirect to dashboard if user is logged in
-            navigate('/dashboard');
-        }
-    }, [navigate]);
+    // Note: Authentication is now handled via httpOnly cookies
+    // Route protection is handled by backend session validation
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white overflow-hidden">
             <nav className="container mx-auto px-6 py-6 flex justify-between items-center">
