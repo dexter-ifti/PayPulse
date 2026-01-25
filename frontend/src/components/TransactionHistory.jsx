@@ -11,10 +11,7 @@ function TransactionHistory() {
                 const response = await axios.get(
                     `${import.meta.env.VITE_BACKEND_URL}/api/v1/account/transactions`,
                     {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-                        },
-                        withCredentials: true,
+                        withCredentials: true, // Send cookies with request
                     }
                 );
                 setTransactions(response.data.data.transactions);

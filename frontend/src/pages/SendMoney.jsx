@@ -23,10 +23,7 @@ const SendMoney = () => {
         to: id,
         amount
       }, {
-        headers: {
-          Authorization: "Bearer " + localStorage.getItem("accessToken")
-        },
-        withCredentials: true
+        withCredentials: true // Send cookies with request
       });
       toast.success("Transfer successful!");
       navigate('/dashboard');
