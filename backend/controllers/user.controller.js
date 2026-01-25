@@ -151,7 +151,7 @@ const signin = async (req, res) => {
         const options = {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+            sameSite: 'none'
         }
 
 
@@ -194,8 +194,7 @@ const logoutUser = async (req, res) => {
 
         const options = {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+            secure: process.env.NODE_ENV === 'production'
         }
 
         return res
@@ -253,8 +252,7 @@ const refreshAccessToken = async (req, res) => {
 
         const options = {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+            secure: true
         }
 
         const { accessToken, newRefreshToken } = await generateAccessTokenAndRefreshToken(user._id);
