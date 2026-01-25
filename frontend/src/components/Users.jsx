@@ -17,10 +17,7 @@ const Users = () => {
 
   useEffect(() => {
     axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/v1/user/bulk?filter=${filter}&page=${currentPage}&limit=${limit}`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-      },
-      withCredentials: true,
+      withCredentials: true, // Send cookies with request
     })
       .then(response => {
         setUsers(response.data.data.users);

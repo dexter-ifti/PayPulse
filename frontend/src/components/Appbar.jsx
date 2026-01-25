@@ -8,28 +8,22 @@ const Appbar = ({ username = 'Dexter' }) => {
 
   const handleLogout = async () => {
     try {
-      // Call the backend logout endpoint
+      // Call the backend logout endpoint (clears httpOnly cookies)
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/v1/user/logout`,
         {},
         {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
           withCredentials: true, // Important for cookie handling
         }
       );
-
-      // Clear local storage
-      localStorage.removeItem('accessToken');
 
       toast.success("Logout successful");
       // Redirect to signin page
       navigate('/signin');
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if the backend call fails, clear local storage and redirect
-      localStorage.removeItem('accessToken');
+      // Even if the backend call fails, redirect to signin
+      toast.error("Logout failed, but redirecting to signin");
       navigate('/signin');
     }
   };
