@@ -10,12 +10,20 @@ const SendMoney = () => {
   const name = searchParams.get("name");
   const [amount, setAmount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [amountError, setAmountError] = useState('');
+  const [amountTouched, setAmountTouched] = useState(false);
+
+  const validateAmount = (value) => {
+    if (!value || value === '0') return 'Amount is required';
+    if (Number(value) <= 0) return 'Amount must be greater than 0';
+    return '';
+  };
 
   const handleTransfer = async () => {
-    if (!amount || amount <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
+    const error = validateAmount(amount);
+    setAmountError(error);
+    setAmountTouched(true);
+    if (error) return;
 
     setLoading(true);
     try {
@@ -82,13 +90,32 @@ const SendMoney = () => {
                   Amount (in Rs)
                 </label>
                 <input
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    if (amountTouched) setAmountError(validateAmount(e.target.value));
+                  }}
+                  onBlur={() => {
+                    setAmountTouched(true);
+                    setAmountError(validateAmount(amount));
+                  }}
                   type="number"
-                  className="flex h-12 w-full rounded-xl border border-slate-600 bg-slate-700/50 px-4 py-2 text-lg text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                  className={`flex h-12 w-full rounded-xl border bg-slate-700/50 px-4 py-2 text-lg text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                    amountTouched && amountError
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-slate-600 focus:ring-orange-500'
+                  }`}
                   id="amount"
                   placeholder="Enter amount"
                   min="1"
                 />
+                {amountTouched && amountError && (
+                  <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1 animate-[fadeSlideIn_0.2s_ease-out]">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 flex-shrink-0">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    </svg>
+                    {amountError}
+                  </p>
+                )}
               </div>
 
               <button
