@@ -1,17 +1,60 @@
-import React, { useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import { Heading, SubHeading, InputBox, Button, BottomWarning } from '../components'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast'
 
+// --- Validation helpers ---
+const validators = {
+  username: (value) => {
+    if (!value.trim()) return 'Email is required';
+    if (value.trim().length < 5) return 'Email must be at least 5 characters';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return 'Please enter a valid email address';
+    return '';
+  },
+  password: (value) => {
+    if (!value) return 'Password is required';
+    if (value.length < 5) return 'Password must be at least 5 characters';
+    return '';
+  },
+};
+
 function Signin() {
-  const [username, setUserName] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [showPassword, setShowPassword] = React.useState(false);
+  const [username, setUserName] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const navigate = useNavigate();
 
   // Note: Authentication is now handled via httpOnly cookies
   // Route protection is handled by backend session validation
+
+  const handleBlur = useCallback((field) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    const value = field === 'username' ? username : password;
+    const error = validators[field](value);
+    setErrors(prev => ({ ...prev, [field]: error }));
+  }, [username, password]);
+
+  const handleChange = useCallback((field, value, setter) => {
+    setter(value);
+    // Only validate on change if the field has already been touched (blurred)
+    if (touched[field]) {
+      const error = validators[field](value);
+      setErrors(prev => ({ ...prev, [field]: error }));
+    }
+  }, [touched]);
+
+  const validateAll = useCallback(() => {
+    const newErrors = {
+      username: validators.username(username),
+      password: validators.password(password),
+    };
+    setErrors(newErrors);
+    setTouched({ username: true, password: true });
+    return !Object.values(newErrors).some(Boolean);
+  }, [username, password]);
 
   return (
     <div className='min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex justify-center items-center p-4 overflow-hidden'>
@@ -42,7 +85,9 @@ function Signin() {
 
           <div className="space-y-4 mt-6">
             <InputBox
-              onChange={e => setUserName(e.target.value)}
+              onChange={e => handleChange('username', e.target.value, setUserName)}
+              onBlur={() => handleBlur('username')}
+              error={touched.username ? errors.username : ''}
               label={"Email"}
               placeholder={"John@gmail.com"}
             />
@@ -52,10 +97,15 @@ function Signin() {
               </div>
               <div className="relative">
                 <input
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={e => handleChange('password', e.target.value, setPassword)}
+                  onBlur={() => handleBlur('password')}
                   type={showPassword ? "text" : "password"}
                   placeholder={"123456"}
-                  className='w-full px-4 py-3 pr-12 rounded-xl border border-slate-600 bg-slate-700/50 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all'
+                  className={`w-full px-4 py-3 pr-12 rounded-xl border bg-slate-700/50 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                    touched.password && errors.password
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-slate-600 focus:ring-orange-500'
+                  }`}
                 />
                 <button
                   type="button"
@@ -75,12 +125,23 @@ function Signin() {
                   )}
                 </button>
               </div>
+              {touched.password && errors.password && (
+                <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1 animate-[fadeSlideIn_0.2s_ease-out]">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 flex-shrink-0">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                  {errors.password}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="pt-6">
             <Button
               onClick={async () => {
+                // Validate all fields before submitting
+                if (!validateAll()) return;
+
                 // Show loading toast with server startup message
                 const loadingToast = toast.loading('Signing in... Server may take a moment to start up.');
 
