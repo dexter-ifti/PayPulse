@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { Heading, SubHeading, InputBox, Button, BottomWarning } from '../components'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast'
+import { Turnstile } from '@marsidev/react-turnstile'
 
 // --- Validation helpers ---
 const validators = {
@@ -26,6 +27,10 @@ function Signin() {
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const navigate = useNavigate();
+  const [turnstileToken, setTurnstileToken] = useState(null);
+  const turnstileRef = useRef(null);
+
+  const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
   // Note: Authentication is now handled via httpOnly cookies
   // Route protection is handled by backend session validation
@@ -136,11 +141,37 @@ function Signin() {
             </div>
           </div>
 
+              {/* Cloudflare Turnstile */}
+          {TURNSTILE_SITE_KEY && (
+            <div className="flex justify-center mt-5">
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={TURNSTILE_SITE_KEY}
+                onSuccess={setTurnstileToken}
+                onError={() => {
+                  setTurnstileToken(null);
+                  toast.error('Verification failed. Please try again.');
+                }}
+                onExpire={() => setTurnstileToken(null)}
+                options={{
+                  theme: 'dark',
+                  size: 'normal',
+                }}
+              />
+            </div>
+          )}
+
           <div className="pt-6">
             <Button
               onClick={async () => {
                 // Validate all fields before submitting
                 if (!validateAll()) return;
+
+                // Check turnstile verification
+                if (TURNSTILE_SITE_KEY && !turnstileToken) {
+                  toast.error("Please verify you're not a robot");
+                  return;
+                }
 
                 // Show loading toast with server startup message
                 const loadingToast = toast.loading('Signing in... Server may take a moment to start up.');
@@ -148,7 +179,8 @@ function Signin() {
                 try {
                   const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/v1/user/signin`, {
                     username,
-                    password
+                    password,
+                    turnstileToken
                   }, {
                     withCredentials: true // Enable cookies
                   });
@@ -173,6 +205,10 @@ function Signin() {
                   // Handle signin errors
                   const errorMessage = error.response?.data?.message || 'Sign in failed. Please check your credentials.';
                   toast.error(errorMessage);
+                } finally {
+                  // Reset turnstile for next attempt
+                  if (turnstileRef.current) turnstileRef.current.reset();
+                  setTurnstileToken(null);
                 }
               }}
               label={"Sign in"}
