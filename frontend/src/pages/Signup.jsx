@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { Heading, SubHeading, InputBox, Button, BottomWarning } from '../components'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast'
+import { Turnstile } from '@marsidev/react-turnstile'
 
 // --- Validation helpers ---
 const validators = {
@@ -37,7 +38,11 @@ function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [turnstileToken, setTurnstileToken] = useState(null);
+  const turnstileRef = useRef(null);
   const navigate = useNavigate();
+
+  const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
   // Note: Authentication is now handled via httpOnly cookies
   // Route protection is handled by backend session validation
@@ -139,11 +144,10 @@ function Signup() {
                   onBlur={() => handleBlur('password')}
                   type={showPassword ? "text" : "password"}
                   placeholder={"123456"}
-                  className={`w-full px-4 py-3 pr-12 rounded-xl border bg-slate-700/50 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
-                    touched.password && errors.password
+                  className={`w-full px-4 py-3 pr-12 rounded-xl border bg-slate-700/50 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${touched.password && errors.password
                       ? 'border-red-500 focus:ring-red-500'
                       : 'border-slate-600 focus:ring-orange-500'
-                  }`}
+                    }`}
                 />
                 <button
                   type="button"
@@ -173,12 +177,38 @@ function Signup() {
               )}
             </div>
           </div>
+          {/* Cloudflare Turnstile */}
+          {TURNSTILE_SITE_KEY && (
+            <div className="flex justify-center mt-5">
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={TURNSTILE_SITE_KEY}
+                onSuccess={setTurnstileToken}
+                onError={() => {
+                  setTurnstileToken(null);
+                  toast.error('Verification failed. Please try again.');
+                }}
+                onExpire={() => setTurnstileToken(null)}
+                options={{
+                  theme: 'dark',
+                  size: 'normal',
+                }}
+              />
+            </div>
+          )}
+
 
           <div className="pt-6">
             <Button
               onClick={async () => {
                 // Validate all fields before submitting
                 if (!validateAll()) return;
+
+                // Check turnstile verification
+                if (TURNSTILE_SITE_KEY && !turnstileToken) {
+                  toast.error("Please verify you're not a robot");
+                  return;
+                }
 
                 // Show loading toast with server startup message
                 const loadingToast = toast.loading('Creating account... Server may take a moment to start up.');
@@ -188,7 +218,8 @@ function Signup() {
                     firstName,
                     lastName,
                     username,
-                    password
+                    password,
+                    turnstileToken
                   });
 
                   // Dismiss loading toast
@@ -202,6 +233,10 @@ function Signup() {
                   // Handle signup errors
                   const errorMessage = error.response?.data?.message || 'Signup failed. Please try again.';
                   toast.error(errorMessage);
+                } finally {
+                  // Reset turnstile for next attempt
+                  if (turnstileRef.current) turnstileRef.current.reset();
+                  setTurnstileToken(null);
                 }
               }}
               label={"Sign up"}
