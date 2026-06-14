@@ -3,8 +3,10 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-const Appbar = ({ username = 'Dexter' }) => {
+const Appbar = ({ username }) => {
   const navigate = useNavigate();
+  const displayName = username || 'there';
+  const initial = username ? [...username][0].toUpperCase() : 'U';
 
   const handleLogout = async () => {
     try {
@@ -40,11 +42,11 @@ const Appbar = ({ username = 'Dexter' }) => {
       </div>
       <div className="flex items-center space-x-4">
         <div className="text-gray-300">
-          Hello, <span className="text-white font-semibold">{username}</span>
+          Hello, <span className="text-white font-semibold">{displayName}</span>
         </div>
         <div className="rounded-full h-10 w-10 bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg border-2 border-orange-400">
-          <div className="text-white font-bold text-lg">
-            {username[0].toUpperCase()}
+          <div className="text-white font-bold text-lg" aria-hidden="true">
+            {initial}
           </div>
         </div>
         <button
