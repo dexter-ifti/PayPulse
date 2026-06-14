@@ -3,6 +3,48 @@
 @tailwind utilities;
 
 body {
-    background-color: #212121;
+    /* Midnight — the floor of the Night Transit canvas (DESIGN.md) */
+    background-color: #0f172a;
     color: #fff;
+}
+
+/* Load-in reveal: animates from a hidden start to the element's natural,
+   already-visible resting state. Content is visible by default; if the
+   animation is stripped (reduced motion, no CSS animation support), the
+   element simply renders in place. */
+@keyframes pp-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.pp-reveal {
+    animation: pp-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pp-reveal {
+        animation: none;
+    }
+}
+
+/* Thin themed scrollbar for scrollable panels (e.g. transaction history) */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(51, 65, 85, 0.3);
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.5);
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.7);
 }
