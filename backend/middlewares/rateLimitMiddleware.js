@@ -1,4 +1,5 @@
 const rateLimitStore = new Map();
+const { writeAuditLog } = require('../services/audit.service');
 
 const RATE_LIMIT_POLICIES = Object.freeze({
     auth: {
@@ -82,6 +83,21 @@ const createRateLimiter = ({
         res.set('X-RateLimit-Reset', String(Math.ceil(bucket.resetAt / 1000)));
 
         if (bucket.count > maxRequests) {
+            writeAuditLog({
+                req,
+                action: 'rate_limit.blocked',
+                resourceType: 'RateLimitPolicy',
+                resourceId: policyName,
+                outcome: 'blocked',
+                details: {
+                    policy: policyName,
+                    identity,
+                    limit: maxRequests,
+                    windowMs,
+                    retryAfterSeconds: resetInSeconds
+                }
+            });
+
             return res
                 .status(429)
                 .set('Retry-After', String(resetInSeconds))
