@@ -1,5 +1,8 @@
 const { User } = require('../models/user.model');
 const { Account } = require('../models/account.model');
+const { Transaction } = require('../models/transaction.model');
+const { createOpeningBalanceLedgerEntries } = require('../services/ledger.service');
+const { mongoose } = require('mongoose');
 const { z } = require('zod');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
@@ -41,6 +44,9 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
 
 // Controller functions
 const signup = async (req, res) => {
+    const session = await mongoose.startSession();
+    let transactionStarted = false;
+
     try {
         const { username, password, firstName, lastName } = req.body;
 
@@ -70,42 +76,56 @@ const signup = async (req, res) => {
             });
         }
 
-        const user = await User.create({
+        session.startTransaction();
+        transactionStarted = true;
+
+        const [user] = await User.create([{
             username,
             password,
             firstName,
             lastName
-        });
+        }], { session });
 
         const userId = user._id;
-        const createdUser = await User.findById(userId).select(
-            "-password -refreshToken"
-        )
+        const openingBalance = 1 + Math.floor(Math.random() * 10000000);
 
-        if (!createdUser) {
-            return res.status(500).json({
-                success: false,
-                message: "Something went wrong"
-            })
-        }
-
-
-        await Account.create({
+        const [account] = await Account.create([{
             userId,
-            balance: 1 + Math.floor(Math.random() * 10000000)
+            balance: openingBalance
+        }], { session });
+
+        // Feature: signup now records the starter wallet balance as balanced ledger entries.
+        const [openingTransaction] = await Transaction.create([{
+            type: 'opening_balance',
+            toUserId: userId,
+            amount: openingBalance,
+            status: 'success'
+        }], { session });
+
+        await createOpeningBalanceLedgerEntries({
+            transactionId: openingTransaction._id,
+            account,
+            amount: openingBalance,
+            session
         });
 
-
+        await session.commitTransaction();
+        transactionStarted = false;
         res.json({
             success: true,
             message: "User created successfully"
         });
     } catch (error) {
+        if (transactionStarted) {
+            await session.abortTransaction();
+        }
         console.log(error);
         return res.status(500).json({
             success: false,
             message: "Something went wrong"
         })
+    } finally {
+        session.endSession();
     }
 };
 

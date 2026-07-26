@@ -1,5 +1,17 @@
 const { Account } = require('../models/account.model');
+const { Transaction } = require('../models/transaction.model');
+const { LedgerEntry } = require('../models/ledgerEntry.model');
+const { createTransferLedgerEntries } = require('../services/ledger.service');
 const { mongoose } = require('mongoose');
+const { z } = require('zod');
+
+// Feature: transfer payload validation blocks negative, zero, and non-finite payment amounts.
+const transferSchema = z.object({
+    amount: z.coerce.number().finite().positive(),
+    to: z.string().refine((value) => mongoose.Types.ObjectId.isValid(value), {
+        message: 'Invalid recipient id'
+    })
+});
 
 const getBalance = async (req, res) => {
     try {
@@ -23,57 +35,118 @@ const getBalance = async (req, res) => {
 
 const transfer = async (req, res) => {
     const session = await mongoose.startSession();
+    let transactionStarted = false;
 
-    session.startTransaction();
-    const { amount, to } = req.body;
+    try {
+        const parsed = transferSchema.safeParse(req.body);
 
-    // Prevent self-transfer
-    if (req.user._id.toString() === to.toString()) {
-        await session.abortTransaction();
-        return res.status(400).json({
-            success: false,
-            message: "Cannot transfer money to yourself"
+        if (!parsed.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid transfer data",
+                errors: parsed.error.errors
+            });
+        }
+
+        session.startTransaction();
+        transactionStarted = true;
+        const { amount, to } = parsed.data;
+
+        // Prevent self-transfer
+        if (req.user._id.toString() === to.toString()) {
+            await session.abortTransaction();
+            return res.status(400).json({
+                success: false,
+                message: "Cannot transfer money to yourself"
+            });
+        }
+
+        const account = await Account.findOne({ userId: req.user._id }).session(session);
+
+        if (!account || account.balance < amount) {
+            await session.abortTransaction();
+            return res.status(400).json({
+                success: false,
+                message: "Insufficient balance"
+            });
+        }
+
+        const toAccount = await Account.findOne({ userId: to }).session(session);
+
+        if (!toAccount) {
+            await session.abortTransaction();
+            return res.status(400).json({
+                success: false,
+                message: "Invalid account"
+            });
+        }
+
+        // Feature: atomic balance mutation remains for fast reads while ledger entries preserve the audit trail.
+        const updatedFromAccount = await Account.findOneAndUpdate(
+            { userId: req.user._id, balance: { $gte: amount } },
+            { $inc: { balance: -amount } },
+            { new: true, session }
+        );
+
+        if (!updatedFromAccount) {
+            await session.abortTransaction();
+            return res.status(400).json({
+                success: false,
+                message: "Insufficient balance"
+            });
+        }
+
+        const updatedToAccount = await Account.findOneAndUpdate(
+            { userId: to },
+            { $inc: { balance: amount } },
+            { new: true, session }
+        );
+
+        if (!updatedToAccount) {
+            await session.abortTransaction();
+            return res.status(400).json({
+                success: false,
+                message: "Invalid account"
+            });
+        }
+
+        const [transaction] = await Transaction.create([{
+            type: 'transfer',
+            fromUserId: req.user._id,
+            toUserId: to,
+            amount: amount,
+            status: 'success'
+        }], { session });
+
+        await createTransferLedgerEntries({
+            transactionId: transaction._id,
+            fromAccount: updatedFromAccount,
+            toAccount: updatedToAccount,
+            amount,
+            session
         });
-    }
 
-    const account = await Account.findOne({ userId: req.user._id }).session(session);
-
-    if (!account || account.balance < amount) {
-        await session.abortTransaction();
-        return res.status(400).json({
-            success: false,
-            message: "Insufficient balance"
+        await session.commitTransaction();
+        transactionStarted = false;
+        res.json({
+            success: true,
+            message: "Transfer successful",
+            data: {
+                transactionId: transaction._id
+            }
         });
-    }
-
-    const toAccount = await Account.findOne({ userId: to }).session(session);
-
-    if (!toAccount) {
-        await session.abortTransaction();
-        return res.status(400).json({
+    } catch (error) {
+        if (transactionStarted) {
+            await session.abortTransaction();
+        }
+        console.error("Error processing transfer:", error);
+        return res.status(500).json({
             success: false,
-            message: "Invalid account"
+            message: "Internal server error"
         });
+    } finally {
+        session.endSession();
     }
-
-    // Perform the transfer
-    await Account.updateOne({ userId: req.user._id }, { $inc: { balance: -amount } }).session(session);
-    await Account.updateOne({ userId: to }, { $inc: { balance: amount } }).session(session);
-
-    // Record the transaction
-    const { Transaction } = require('../models/transaction.model');
-    await Transaction.create([{
-        fromUserId: req.user._id,
-        toUserId: to,
-        amount: amount,
-        status: 'success'
-    }], { session });
-
-    await session.commitTransaction();
-    res.json({
-        success: true,
-        message: "Transfer successful"
-    });
 };
 
 const getTransactionHistory = async (req, res) => {
@@ -83,6 +156,7 @@ const getTransactionHistory = async (req, res) => {
 
         // Find all transactions where user is either sender or receiver
         const transactions = await Transaction.find({
+            type: 'transfer',
             $or: [
                 { fromUserId: req.user._id },
                 { toUserId: req.user._id }
@@ -123,8 +197,44 @@ const getTransactionHistory = async (req, res) => {
     }
 };
 
+// Feature: expose immutable ledger rows so every account balance change can be audited.
+const getLedgerHistory = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+        const skip = (page - 1) * limit;
+
+        const entries = await LedgerEntry.find({ userId: req.user._id })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        const totalEntries = await LedgerEntry.countDocuments({ userId: req.user._id });
+
+        res.json({
+            success: true,
+            data: {
+                ledgerEntries: entries,
+                pagination: {
+                    currentPage: page,
+                    totalPages: Math.ceil(totalEntries / limit),
+                    totalEntries,
+                    limit
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching ledger history:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
 module.exports = {
     getBalance,
     transfer,
-    getTransactionHistory
+    getTransactionHistory,
+    getLedgerHistory
 };
