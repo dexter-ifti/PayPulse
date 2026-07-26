@@ -2,6 +2,10 @@ const { User } = require('../models/user.model');
 const { Account } = require('../models/account.model');
 const { Transaction } = require('../models/transaction.model');
 const { createOpeningBalanceLedgerEntries } = require('../services/ledger.service');
+const {
+    TRANSACTION_STATES,
+    transitionTransactionState
+} = require('../services/transactionState.service');
 const { mongoose } = require('mongoose');
 const { z } = require('zod');
 const jwt = require('jsonwebtoken');
@@ -99,13 +103,27 @@ const signup = async (req, res) => {
             type: 'opening_balance',
             toUserId: userId,
             amount: openingBalance,
-            status: 'success'
+            status: TRANSACTION_STATES.CREATED
         }], { session });
+
+        await transitionTransactionState({
+            transaction: openingTransaction,
+            toState: TRANSACTION_STATES.PROCESSING,
+            reason: 'Opening wallet funding started',
+            session
+        });
 
         await createOpeningBalanceLedgerEntries({
             transactionId: openingTransaction._id,
             account,
             amount: openingBalance,
+            session
+        });
+
+        await transitionTransactionState({
+            transaction: openingTransaction,
+            toState: TRANSACTION_STATES.SUCCESS,
+            reason: 'Opening wallet funding ledger posted',
             session
         });
 

@@ -9,6 +9,10 @@ const {
     completeIdempotentRequest,
     failIdempotentRequest
 } = require('../services/idempotency.service');
+const {
+    TRANSACTION_STATES,
+    transitionTransactionState
+} = require('../services/transactionState.service');
 const { mongoose } = require('mongoose');
 const { z } = require('zod');
 
@@ -152,6 +156,23 @@ const transfer = async (req, res) => {
             });
         }
 
+        // Feature: transfers now move through an explicit transaction state machine.
+        const [transaction] = await Transaction.create([{
+            type: 'transfer',
+            fromUserId: req.user._id,
+            toUserId: to,
+            amount: amount,
+            status: TRANSACTION_STATES.CREATED,
+            idempotencyKey: idempotencyKeyResult.key
+        }], { session });
+
+        await transitionTransactionState({
+            transaction,
+            toState: TRANSACTION_STATES.PROCESSING,
+            reason: 'Transfer accepted for wallet debit and credit',
+            session
+        });
+
         // Feature: atomic balance mutation remains for fast reads while ledger entries preserve the audit trail.
         const updatedFromAccount = await Account.findOneAndUpdate(
             { userId: req.user._id, balance: { $gte: amount } },
@@ -183,20 +204,18 @@ const transfer = async (req, res) => {
             });
         }
 
-        const [transaction] = await Transaction.create([{
-            type: 'transfer',
-            fromUserId: req.user._id,
-            toUserId: to,
-            amount: amount,
-            status: 'success',
-            idempotencyKey: idempotencyKeyResult.key
-        }], { session });
-
         await createTransferLedgerEntries({
             transactionId: transaction._id,
             fromAccount: updatedFromAccount,
             toAccount: updatedToAccount,
             amount,
+            session
+        });
+
+        await transitionTransactionState({
+            transaction,
+            toState: TRANSACTION_STATES.SUCCESS,
+            reason: 'Wallet debit, credit, and ledger posting completed',
             session
         });
 
@@ -274,6 +293,7 @@ const getTransactionHistory = async (req, res) => {
                     _id: transaction._id,
                     amount: transaction.amount,
                     status: transaction.status,
+                    statusHistory: transaction.statusHistory,
                     timestamp: transaction.createdAt,
                     type: transaction.fromUserId.toString() === req.user._id.toString() ? 'sent' : 'received',
                     counterparty: transaction.fromUserId.toString() === req.user._id.toString()
