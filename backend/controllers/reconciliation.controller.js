@@ -1,12 +1,26 @@
 const { mongoose } = require('mongoose');
 const { ReconciliationReport } = require('../models/reconciliationReport.model');
 const { runReconciliation } = require('../services/reconciliation.service');
+const { writeAuditLog } = require('../services/audit.service');
 
 // Feature: run a reconciliation job that checks ledger balances, transaction ledger rows, and provider webhook state.
 const runReconciliationReport = async (req, res) => {
     try {
         const report = await runReconciliation({
             triggeredByUserId: req.user?._id
+        });
+
+        await writeAuditLog({
+            req,
+            action: 'reconciliation.run',
+            resourceType: 'ReconciliationReport',
+            resourceId: report._id,
+            outcome: report.status === 'completed' ? 'success' : 'failure',
+            details: {
+                status: report.status,
+                summary: report.summary,
+                errorMessage: report.errorMessage
+            }
         });
 
         return res.status(report.status === 'completed' ? 201 : 500).json({

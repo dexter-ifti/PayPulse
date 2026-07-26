@@ -6,5 +6,6 @@ const IdempotencyKey = require('./idempotencyKey.model');
 const WebhookEvent = require('./webhookEvent.model');
 const DeadLetterEvent = require('./deadLetterEvent.model');
 const ReconciliationReport = require('./reconciliationReport.model');
+const AuditLog = require('./auditLog.model');
 
-module.exports = { User, Account, Transaction, LedgerEntry, IdempotencyKey, WebhookEvent, DeadLetterEvent, ReconciliationReport };
+module.exports = { User, Account, Transaction, LedgerEntry, IdempotencyKey, WebhookEvent, DeadLetterEvent, ReconciliationReport, AuditLog };

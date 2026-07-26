@@ -6,6 +6,7 @@ const {
     TRANSACTION_STATES,
     transitionTransactionState
 } = require('../services/transactionState.service');
+const { writeAuditLog } = require('../services/audit.service');
 const { mongoose } = require('mongoose');
 const { z } = require('zod');
 const jwt = require('jsonwebtoken');
@@ -127,6 +128,21 @@ const signup = async (req, res) => {
             session
         });
 
+        await writeAuditLog({
+            req,
+            actorUserId: userId,
+            actorType: 'user',
+            action: 'user.signup',
+            resourceType: 'User',
+            resourceId: userId,
+            outcome: 'success',
+            details: {
+                openingBalance,
+                openingTransactionId: openingTransaction._id
+            },
+            session
+        });
+
         await session.commitTransaction();
         transactionStarted = false;
         res.json({
@@ -164,6 +180,18 @@ const signin = async (req, res) => {
         const user = await User.findOne({ username });
 
         if (!user) {
+            await writeAuditLog({
+                req,
+                actorType: 'anonymous',
+                action: 'user.signin',
+                resourceType: 'User',
+                outcome: 'failure',
+                details: {
+                    username,
+                    reason: 'user_not_found'
+                }
+            });
+
             return res.status(404).json({
                 success: false,
                 message: "Incorrect user credentials"
@@ -173,6 +201,19 @@ const signin = async (req, res) => {
         const isPasswordValid = await user.isPasswordCorrect(password);
 
         if (!isPasswordValid) {
+            await writeAuditLog({
+                req,
+                actorUserId: user._id,
+                actorType: 'user',
+                action: 'user.signin',
+                resourceType: 'User',
+                resourceId: user._id,
+                outcome: 'failure',
+                details: {
+                    reason: 'invalid_password'
+                }
+            });
+
             return res.status(401).json({
                 success: false,
                 message: "Incorrect user credentials"
@@ -185,6 +226,16 @@ const signin = async (req, res) => {
         const loggedInUser = await User.findById(userId).select(
             "-password -refreshToken"
         )
+
+        await writeAuditLog({
+            req,
+            actorUserId: userId,
+            actorType: 'user',
+            action: 'user.signin',
+            resourceType: 'User',
+            resourceId: userId,
+            outcome: 'success'
+        });
 
         const options = {
             httpOnly: true,
@@ -229,6 +280,16 @@ const logoutUser = async (req, res) => {
                 new: true
             }
         )
+
+        await writeAuditLog({
+            req,
+            actorUserId: userId,
+            actorType: 'user',
+            action: 'user.logout',
+            resourceType: 'User',
+            resourceId: userId,
+            outcome: 'success'
+        });
 
         const options = {
             httpOnly: true,

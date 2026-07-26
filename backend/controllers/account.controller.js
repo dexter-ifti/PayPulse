@@ -13,6 +13,7 @@ const {
     TRANSACTION_STATES,
     transitionTransactionState
 } = require('../services/transactionState.service');
+const { writeAuditLog } = require('../services/audit.service');
 const { mongoose } = require('mongoose');
 const { z } = require('zod');
 
@@ -89,6 +90,17 @@ const transfer = async (req, res) => {
 
         if (!idempotencyRequest.isNew) {
             if (!idempotencyRecord || idempotencyRecord.requestHash !== requestHash) {
+                await writeAuditLog({
+                    req,
+                    action: 'transfer.idempotency_conflict',
+                    resourceType: 'IdempotencyKey',
+                    resourceId: idempotencyRecord?._id,
+                    outcome: 'blocked',
+                    details: {
+                        idempotencyKey: idempotencyKeyResult.key
+                    }
+                });
+
                 return res.status(409).json({
                     success: false,
                     message: "Idempotency-Key was already used with a different transfer request"
@@ -96,6 +108,18 @@ const transfer = async (req, res) => {
             }
 
             if (['completed', 'failed'].includes(idempotencyRecord.status)) {
+                await writeAuditLog({
+                    req,
+                    action: 'transfer.idempotency_replay',
+                    resourceType: 'IdempotencyKey',
+                    resourceId: idempotencyRecord._id,
+                    outcome: 'success',
+                    details: {
+                        idempotencyKey: idempotencyKeyResult.key,
+                        replayedStatus: idempotencyRecord.status
+                    }
+                });
+
                 return res
                     .status(idempotencyRecord.responseStatusCode)
                     .set('Idempotency-Replayed', 'true')
@@ -232,6 +256,21 @@ const transfer = async (req, res) => {
             responseStatusCode: 200,
             responseBody,
             transactionId: transaction._id,
+            session
+        });
+
+        await writeAuditLog({
+            req,
+            action: 'transfer.completed',
+            resourceType: 'Transaction',
+            resourceId: transaction._id,
+            outcome: 'success',
+            details: {
+                amount,
+                fromUserId: req.user._id,
+                toUserId: to,
+                idempotencyKey: idempotencyKeyResult.key
+            },
             session
         });
 

@@ -6,6 +6,7 @@ const {
     processWebhookEvent
 } = require('../services/webhook.service');
 const { getDueWebhookRetries } = require('../services/retry.service');
+const { writeAuditLog } = require('../services/audit.service');
 const { WebhookEvent } = require('../models/webhookEvent.model');
 const { DeadLetterEvent } = require('../models/deadLetterEvent.model');
 
@@ -55,11 +56,37 @@ const handlePaymentProviderWebhook = async (req, res) => {
 
         if (!webhookRequest.isNew) {
             if (webhookRequest.event.payloadHash !== hashWebhookPayload(rawBody)) {
+                await writeAuditLog({
+                    req,
+                    actorType: 'provider',
+                    action: 'webhook.payload_conflict',
+                    resourceType: 'WebhookEvent',
+                    resourceId: webhookRequest.event._id,
+                    outcome: 'blocked',
+                    details: {
+                        eventId: headerValidation.eventId,
+                        eventType: type
+                    }
+                });
+
                 return res.status(409).json({
                     success: false,
                     message: "Webhook event ID was already used with a different payload"
                 });
             }
+
+            await writeAuditLog({
+                req,
+                actorType: 'provider',
+                action: 'webhook.replayed',
+                resourceType: 'WebhookEvent',
+                resourceId: webhookRequest.event._id,
+                outcome: 'success',
+                details: {
+                    eventId: webhookRequest.event.eventId,
+                    status: webhookRequest.event.status
+                }
+            });
 
             return res
                 .status(200)
@@ -75,6 +102,21 @@ const handlePaymentProviderWebhook = async (req, res) => {
         }
 
         const processedEvent = await processWebhookEvent(webhookRequest.event);
+
+        await writeAuditLog({
+            req,
+            actorType: 'provider',
+            action: 'webhook.received',
+            resourceType: 'WebhookEvent',
+            resourceId: processedEvent._id,
+            outcome: processedEvent.status === 'processed' ? 'success' : 'failure',
+            details: {
+                eventId: processedEvent.eventId,
+                eventType: processedEvent.eventType,
+                status: processedEvent.status,
+                attempts: processedEvent.attempts
+            }
+        });
 
         return res.status(200).json({
             success: true,
@@ -149,6 +191,17 @@ const processDueWebhookRetries = async (req, res) => {
                 lastError: processedEvent.lastError
             });
         }
+
+        await writeAuditLog({
+            req,
+            action: 'webhook.retry_batch_processed',
+            resourceType: 'WebhookEvent',
+            outcome: 'success',
+            details: {
+                processedCount: results.length,
+                results
+            }
+        });
 
         return res.json({
             success: true,
