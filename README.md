@@ -52,6 +52,60 @@ The project is built as a portfolio-grade product demo with a modern fintech int
 - API responses follow a consistent `success`, `message`, and `data` shape across most endpoints.
 - Transaction records include sender, receiver, amount, status, and timestamps.
 
+## High-Level System Design
+
+```mermaid
+flowchart TB
+    User[User Browser] --> Frontend[React + Vite Frontend]
+    Frontend -->|Cookie JWT / Bearer Token| API[Express API<br/>/api/v1]
+
+    API --> RateLimit[Rate Limit Middleware]
+    RateLimit --> Auth[Auth Middleware]
+    API --> Turnstile[Turnstile Middleware]
+
+    Auth --> UserRoutes[User Routes]
+    Auth --> AccountRoutes[Account Routes]
+    Auth --> OpsRoutes[Ops / Admin Routes]
+
+    UserRoutes --> UserService[Signup / Signin / Token Flow]
+    AccountRoutes --> TransferService[Transfer Orchestrator]
+    TransferService --> Idempotency[Idempotency Key Service]
+    TransferService --> StateMachine[Transaction State Machine]
+    TransferService --> LedgerService[Double-Entry Ledger Service]
+    TransferService --> AuditService[Audit Log Service]
+
+    Provider[Simulated Payment Provider] -->|Signed Webhook| WebhookRoutes[Webhook Routes]
+    WebhookRoutes --> WebhookVerifier[HMAC Signature + Replay Protection]
+    WebhookVerifier --> WebhookProcessor[Webhook Processor]
+    WebhookProcessor --> StateMachine
+    WebhookProcessor --> RetryService[Retry Scheduler]
+    RetryService --> DLQ[Dead-Letter Queue]
+    WebhookProcessor --> AuditService
+
+    OpsRoutes --> Reconciliation[Reconciliation Service]
+    OpsRoutes --> AuditQuery[Audit Inspection]
+    OpsRoutes --> OpenAPI[OpenAPI Docs]
+    Reconciliation --> AuditService
+
+    UserService --> Mongo[(MongoDB Replica Set)]
+    Idempotency --> Mongo
+    StateMachine --> Mongo
+    LedgerService --> Mongo
+    WebhookProcessor --> Mongo
+    RetryService --> Mongo
+    DLQ --> Mongo
+    Reconciliation --> Mongo
+    AuditService --> Mongo
+
+    Turnstile --> Cloudflare[Cloudflare Turnstile]
+```
+
+### Backend Flow Summary
+
+- **Transfer path:** validates request, enforces rate limit, checks idempotency, creates a transaction, moves it through `CREATED -> PROCESSING -> SUCCESS`, updates balances, writes double-entry ledger rows, stores replayable response, and writes an audit event inside the same transaction.
+- **Webhook path:** verifies HMAC signature and timestamp, de-duplicates provider event IDs, processes valid events idempotently, schedules failed processing for retry, and moves repeated failures to the dead-letter queue.
+- **Operations path:** reconciliation compares cached balances, ledger totals, transaction records, and processed provider events; audit logs provide traceability for sensitive actions.
+
 ## Tech Stack
 
 ### Frontend
