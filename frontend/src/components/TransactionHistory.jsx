@@ -1,6 +1,25 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
+// Feature: transaction state badges support the backend payment lifecycle states.
+const getTransactionStatusMeta = (status) => {
+    const normalizedStatus = String(status || '').toUpperCase();
+
+    const statusStyles = {
+        SUCCESS: 'bg-green-500/20 text-green-400',
+        PROCESSING: 'bg-orange-500/20 text-orange-300',
+        CREATED: 'bg-slate-500/20 text-slate-300',
+        FAILED: 'bg-red-500/20 text-red-400',
+        REVERSED: 'bg-blue-500/20 text-blue-300',
+        EXPIRED: 'bg-slate-500/20 text-slate-300'
+    };
+
+    return {
+        label: normalizedStatus || 'UNKNOWN',
+        className: statusStyles[normalizedStatus] || 'bg-slate-500/20 text-slate-300'
+    };
+};
+
 function TransactionHistory() {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -79,6 +98,7 @@ function TransactionHistory() {
                 <ul className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                     {transactions.map((transaction) => {
                         const received = transaction.type === 'received';
+                        const statusMeta = getTransactionStatusMeta(transaction.status);
                         return (
                             <li
                                 key={transaction._id}
@@ -115,9 +135,9 @@ function TransactionHistory() {
                                             {received ? '+' : '-'}₹{transaction.amount.toLocaleString()}
                                         </p>
                                         <span
-                                            className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${transaction.status === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+                                            className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusMeta.className}`}
                                         >
-                                            {transaction.status}
+                                            {statusMeta.label}
                                         </span>
                                     </div>
                                 </div>

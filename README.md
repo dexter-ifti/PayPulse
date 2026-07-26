@@ -41,6 +41,7 @@ The project is built as a portfolio-grade product demo with a modern fintech int
 - Mongoose sessions are used for signup funding and transfers so account, transaction, and ledger writes commit together.
 - Every wallet money movement now writes immutable double-entry ledger rows, including signup funding and peer-to-peer transfers.
 - `POST /account/transfer` requires an `Idempotency-Key` header so client retries replay the original result instead of moving money twice.
+- Transactions move through an explicit state machine: `CREATED`, `PROCESSING`, `SUCCESS`, `FAILED`, `REVERSED`, and `EXPIRED`.
 - Transfers validate positive amounts before entering the transaction flow, preventing negative-amount balance corruption.
 - API responses follow a consistent `success`, `message`, and `data` shape across most endpoints.
 - Transaction records include sender, receiver, amount, status, and timestamps.
@@ -293,9 +294,19 @@ Idempotency-Key: 8f0f5c7e-1f6a-4d4c-97ea-f9d55d72ef80
 - `fromUserId`: sender user reference
 - `toUserId`: receiver user reference
 - `amount`
-- `status`: `success` or `failed`
+- `status`: `CREATED`, `PROCESSING`, `SUCCESS`, `FAILED`, `REVERSED`, or `EXPIRED`
+- `statusHistory`: append-only transition history with reason and timestamp
 - `idempotencyKey`: retry-safety key used for transfer creation
 - timestamps
+
+### Transaction State Machine
+
+- `CREATED -> PROCESSING`
+- `CREATED -> FAILED`
+- `CREATED -> EXPIRED`
+- `PROCESSING -> SUCCESS`
+- `PROCESSING -> FAILED`
+- `SUCCESS -> REVERSED`
 
 ### Ledger Entry
 
@@ -321,7 +332,7 @@ Idempotency-Key: 8f0f5c7e-1f6a-4d4c-97ea-f9d55d72ef80
 3. The user signs in, receiving HTTP-only access and refresh cookies.
 4. The dashboard loads the user's balance, searchable user directory, and transaction history.
 5. The user selects another user, enters an amount, and submits a transfer.
-6. The backend validates the idempotency key, runs the transfer in a MongoDB transaction, updates both balances, records ledger entries, caches the response, and returns success.
+6. The backend validates the idempotency key, moves the transaction through `CREATED -> PROCESSING -> SUCCESS`, updates both balances, records ledger entries, caches the response, and returns success.
 7. The user returns to the dashboard and can see the updated history.
 
 ## Design Notes
