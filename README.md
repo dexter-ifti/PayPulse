@@ -46,6 +46,7 @@ The project is built as a portfolio-grade product demo with a modern fintech int
 - Failed webhook processing is retried with backoff and moved to a dead-letter queue after repeated failure.
 - Reconciliation jobs detect mismatches between cached balances, ledger-derived balances, transaction ledger rows, and provider webhook state.
 - Sensitive endpoints are protected by named sliding-window rate-limit policies with `X-RateLimit-*` and `Retry-After` headers.
+- Security, money movement, webhook, retry, reconciliation, and rate-limit events are written to an append-only audit log.
 - Transfers validate positive amounts before entering the transaction flow, preventing negative-amount balance corruption.
 - API responses follow a consistent `success`, `message`, and `data` shape across most endpoints.
 - Transaction records include sender, receiver, amount, status, and timestamps.
@@ -246,6 +247,12 @@ All application API routes are mounted under `/api/v1`.
 | `GET` | `/api/v1/reconciliation/reports` | Yes | List reconciliation report summaries |
 | `GET` | `/api/v1/reconciliation/reports/:reportId` | Yes | Fetch a detailed reconciliation report |
 
+### Audit Routes
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/audit/logs` | Yes | Inspect audit logs with action, outcome, actor, and resource filters |
+
 ## Example Requests
 
 ### Signup
@@ -424,6 +431,17 @@ Rate-limit responses return HTTP `429` with `Retry-After`, `X-RateLimit-Policy`,
 | `webhook` | 1 minute | 120 | Payment provider webhook |
 | `adminRead` | 1 minute | 60 | Webhook/reconciliation inspection endpoints |
 | `adminWrite` | 1 minute | 5 | Retry processing and reconciliation runs |
+
+### Audit Log
+
+- `actorUserId`, `actorType`
+- `action`: event name such as `user.signin`, `transfer.completed`, `webhook.received`, `rate_limit.blocked`
+- `resourceType`, `resourceId`
+- `outcome`: `success`, `failure`, or `blocked`
+- `ipAddress`, `userAgent`, `requestId`
+- `details`: structured event metadata with secrets and passwords excluded
+
+Audited actions currently include signup, signin success/failure, logout, completed transfers, idempotency replays/conflicts, webhook receipt/replay/conflicts, webhook retry batch processing, reconciliation runs, and rate-limit blocks.
 
 ## Product Flow
 
