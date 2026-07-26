@@ -47,6 +47,7 @@ The project is built as a portfolio-grade product demo with a modern fintech int
 - Reconciliation jobs detect mismatches between cached balances, ledger-derived balances, transaction ledger rows, and provider webhook state.
 - Sensitive endpoints are protected by named sliding-window rate-limit policies with `X-RateLimit-*` and `Retry-After` headers.
 - Security, money movement, webhook, retry, reconciliation, and rate-limit events are written to an append-only audit log.
+- Built-in OpenAPI documentation is available as JSON and a lightweight local docs page.
 - Transfers validate positive amounts before entering the transaction flow, preventing negative-amount balance corruption.
 - API responses follow a consistent `success`, `message`, and `data` shape across most endpoints.
 - Transaction records include sender, receiver, amount, status, and timestamps.
@@ -253,6 +254,13 @@ All application API routes are mounted under `/api/v1`.
 | --- | --- | --- | --- |
 | `GET` | `/api/v1/audit/logs` | Yes | Inspect audit logs with action, outcome, actor, and resource filters |
 
+### Docs Routes
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/docs` | No | Lightweight API documentation page |
+| `GET` | `/api/v1/docs/openapi.json` | No | OpenAPI 3.0 JSON contract |
+
 ## Example Requests
 
 ### Signup
@@ -442,6 +450,12 @@ Rate-limit responses return HTTP `429` with `Retry-After`, `X-RateLimit-Policy`,
 - `details`: structured event metadata with secrets and passwords excluded
 
 Audited actions currently include signup, signin success/failure, logout, completed transfers, idempotency replays/conflicts, webhook receipt/replay/conflicts, webhook retry batch processing, reconciliation runs, and rate-limit blocks.
+
+### OpenAPI Documentation
+
+- `GET /api/v1/docs` serves a lightweight local API docs page.
+- `GET /api/v1/docs/openapi.json` returns the OpenAPI 3.0 contract for API clients and review tools.
+- The spec documents auth, transfers, idempotency, ledger entries, webhooks, retries, reconciliation, rate limits, audit logs, and common error responses.
 
 ## Product Flow
 

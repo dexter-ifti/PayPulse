@@ -4,6 +4,7 @@ const accountRouter = require('./account');
 const webhookRouter = require('./webhook');
 const reconciliationRouter = require('./reconciliation');
 const auditRouter = require('./audit');
+const docsRouter = require('./docs');
 
 const router = express.Router();
 
@@ -12,6 +13,7 @@ router.use('/account', accountRouter);
 router.use('/webhooks', webhookRouter);
 router.use('/reconciliation', reconciliationRouter);
 router.use('/audit', auditRouter);
+router.use('/docs', docsRouter);
 
 
 module.exports = router;
