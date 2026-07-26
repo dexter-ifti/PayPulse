@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { TRANSACTION_STATES } = require('../services/transactionState.service');
 
 const transactionSchema = mongoose.Schema({
     type: {
@@ -22,14 +23,34 @@ const transactionSchema = mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['success', 'failed'],
-        default: 'success'
+        enum: Object.values(TRANSACTION_STATES),
+        default: TRANSACTION_STATES.CREATED,
+        index: true
     },
     idempotencyKey: {
         type: String,
         trim: true,
         index: true
-    }
+    },
+    statusHistory: [{
+        from: {
+            type: String,
+            enum: Object.values(TRANSACTION_STATES)
+        },
+        to: {
+            type: String,
+            enum: Object.values(TRANSACTION_STATES),
+            required: true
+        },
+        reason: {
+            type: String,
+            trim: true
+        },
+        changedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }]
 }, {
     timestamps: true
 });
