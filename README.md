@@ -38,7 +38,10 @@ The project is built as a portfolio-grade product demo with a modern fintech int
 ### Backend Reliability
 
 - MongoDB models for users, accounts, and transactions.
-- Mongoose sessions are used for transfer operations so debiting one account, crediting another, and recording the transaction happen together.
+- Mongoose sessions are used for signup funding and transfers so account, transaction, and ledger writes commit together.
+- Every wallet money movement now writes immutable double-entry ledger rows, including signup funding and peer-to-peer transfers.
+- `POST /account/transfer` requires an `Idempotency-Key` header so client retries replay the original result instead of moving money twice.
+- Transfers validate positive amounts before entering the transaction flow, preventing negative-amount balance corruption.
 - API responses follow a consistent `success`, `message`, and `data` shape across most endpoints.
 - Transaction records include sender, receiver, amount, status, and timestamps.
 
@@ -98,7 +101,7 @@ PayPulse/
 - Node.js 18 or newer
 - npm
 - MongoDB
-- A MongoDB replica set if you want transfer transactions to work reliably with Mongoose sessions
+- A MongoDB replica set for signup funding and transfer transactions to work reliably with Mongoose sessions
 
 The included `Dockerfile` creates a MongoDB image that starts with replica-set support.
 
@@ -217,6 +220,7 @@ All application API routes are mounted under `/api/v1`.
 | `GET` | `/api/v1/account/balance` | Yes | Return the authenticated user's balance |
 | `POST` | `/api/v1/account/transfer` | Yes | Transfer money to another user |
 | `GET` | `/api/v1/account/transactions` | Yes | Return sent and received transaction history |
+| `GET` | `/api/v1/account/ledger` | Yes | Return immutable debit/credit ledger entries for the authenticated user |
 
 ## Example Requests
 
@@ -259,6 +263,7 @@ GET /api/v1/user/bulk?filter=rahul&page=1&limit=5
 ```http
 POST /api/v1/account/transfer
 Content-Type: application/json
+Idempotency-Key: 8f0f5c7e-1f6a-4d4c-97ea-f9d55d72ef80
 
 {
   "to": "recipient-user-id",
@@ -284,11 +289,30 @@ Content-Type: application/json
 
 ### Transaction
 
+- `type`: `opening_balance` or `transfer`
 - `fromUserId`: sender user reference
 - `toUserId`: receiver user reference
 - `amount`
 - `status`: `success` or `failed`
+- `idempotencyKey`: retry-safety key used for transfer creation
 - timestamps
+
+### Ledger Entry
+
+- `transactionId`: source transaction reference
+- `accountId` / `userId`: wallet owner when the entry belongs to a user wallet
+- `ledgerAccount`: stable ledger account identifier
+- `entryType`: `debit` or `credit`
+- `movementType`: `opening_balance` or `transfer`
+- `amount`, `currency`, `balanceAfter`
+
+### Idempotency Key
+
+- `key`: client-provided retry key
+- `userId`, `endpoint`, `requestHash`
+- `status`: `processing`, `completed`, or `failed`
+- `responseStatusCode` and `responseBody` for replaying duplicate requests
+- `lockedUntil`, `expiresAt`
 
 ## Product Flow
 
@@ -297,7 +321,7 @@ Content-Type: application/json
 3. The user signs in, receiving HTTP-only access and refresh cookies.
 4. The dashboard loads the user's balance, searchable user directory, and transaction history.
 5. The user selects another user, enters an amount, and submits a transfer.
-6. The backend runs the transfer in a MongoDB transaction, updates both balances, records the transaction, and returns success.
+6. The backend validates the idempotency key, runs the transfer in a MongoDB transaction, updates both balances, records ledger entries, caches the response, and returns success.
 7. The user returns to the dashboard and can see the updated history.
 
 ## Design Notes
@@ -307,7 +331,7 @@ PayPulse uses a "Night Transit" design direction: a deep slate canvas with a war
 ## Known Notes
 
 - The frontend keeps a small `localStorage` login flag for client-side UX, but actual authentication is handled by HTTP-only cookies.
-- MongoDB transactions require replica-set support.
+- MongoDB transactions for signup funding and transfers require replica-set support.
 - The backend test script is currently a placeholder.
 - `backend/config.js` contains an older static `JWT_SECRET` export, while the active token generation and verification paths use environment variables.
 
