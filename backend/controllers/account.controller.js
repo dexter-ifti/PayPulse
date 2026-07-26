@@ -2,6 +2,13 @@ const { Account } = require('../models/account.model');
 const { Transaction } = require('../models/transaction.model');
 const { LedgerEntry } = require('../models/ledgerEntry.model');
 const { createTransferLedgerEntries } = require('../services/ledger.service');
+const {
+    buildRequestHash,
+    getValidatedIdempotencyKey,
+    beginIdempotentRequest,
+    completeIdempotentRequest,
+    failIdempotentRequest
+} = require('../services/idempotency.service');
 const { mongoose } = require('mongoose');
 const { z } = require('zod');
 
@@ -36,8 +43,18 @@ const getBalance = async (req, res) => {
 const transfer = async (req, res) => {
     const session = await mongoose.startSession();
     let transactionStarted = false;
+    let idempotencyRecord = null;
 
     try {
+        const idempotencyKeyResult = getValidatedIdempotencyKey(req);
+
+        if (!idempotencyKeyResult.ok) {
+            return res.status(400).json({
+                success: false,
+                message: idempotencyKeyResult.error
+            });
+        }
+
         const parsed = transferSchema.safeParse(req.body);
 
         if (!parsed.success) {
@@ -48,14 +65,66 @@ const transfer = async (req, res) => {
             });
         }
 
+        const { amount, to } = parsed.data;
+        const endpoint = 'POST /api/v1/account/transfer';
+        const requestHash = buildRequestHash({
+            userId: req.user._id,
+            endpoint,
+            body: { amount, to }
+        });
+
+        // Feature: idempotency-key handling prevents duplicate transfers during client or network retries.
+        const idempotencyRequest = await beginIdempotentRequest({
+            key: idempotencyKeyResult.key,
+            userId: req.user._id,
+            endpoint,
+            requestHash
+        });
+
+        idempotencyRecord = idempotencyRequest.record;
+
+        if (!idempotencyRequest.isNew) {
+            if (!idempotencyRecord || idempotencyRecord.requestHash !== requestHash) {
+                return res.status(409).json({
+                    success: false,
+                    message: "Idempotency-Key was already used with a different transfer request"
+                });
+            }
+
+            if (['completed', 'failed'].includes(idempotencyRecord.status)) {
+                return res
+                    .status(idempotencyRecord.responseStatusCode)
+                    .set('Idempotency-Replayed', 'true')
+                    .json(idempotencyRecord.responseBody);
+            }
+
+            return res.status(409).json({
+                success: false,
+                message: "A transfer with this Idempotency-Key is already processing",
+                data: {
+                    lockedUntil: idempotencyRecord.lockedUntil
+                }
+            });
+        }
+
+        const sendAndCacheResponse = async (statusCode, body) => {
+            await completeIdempotentRequest({
+                recordId: idempotencyRecord._id,
+                responseStatusCode: statusCode,
+                responseBody: body
+            });
+
+            return res.status(statusCode).json(body);
+        };
+
         session.startTransaction();
         transactionStarted = true;
-        const { amount, to } = parsed.data;
 
         // Prevent self-transfer
         if (req.user._id.toString() === to.toString()) {
             await session.abortTransaction();
-            return res.status(400).json({
+            transactionStarted = false;
+            return sendAndCacheResponse(400, {
                 success: false,
                 message: "Cannot transfer money to yourself"
             });
@@ -65,7 +134,8 @@ const transfer = async (req, res) => {
 
         if (!account || account.balance < amount) {
             await session.abortTransaction();
-            return res.status(400).json({
+            transactionStarted = false;
+            return sendAndCacheResponse(400, {
                 success: false,
                 message: "Insufficient balance"
             });
@@ -75,7 +145,8 @@ const transfer = async (req, res) => {
 
         if (!toAccount) {
             await session.abortTransaction();
-            return res.status(400).json({
+            transactionStarted = false;
+            return sendAndCacheResponse(400, {
                 success: false,
                 message: "Invalid account"
             });
@@ -90,7 +161,8 @@ const transfer = async (req, res) => {
 
         if (!updatedFromAccount) {
             await session.abortTransaction();
-            return res.status(400).json({
+            transactionStarted = false;
+            return sendAndCacheResponse(400, {
                 success: false,
                 message: "Insufficient balance"
             });
@@ -104,7 +176,8 @@ const transfer = async (req, res) => {
 
         if (!updatedToAccount) {
             await session.abortTransaction();
-            return res.status(400).json({
+            transactionStarted = false;
+            return sendAndCacheResponse(400, {
                 success: false,
                 message: "Invalid account"
             });
@@ -115,7 +188,8 @@ const transfer = async (req, res) => {
             fromUserId: req.user._id,
             toUserId: to,
             amount: amount,
-            status: 'success'
+            status: 'success',
+            idempotencyKey: idempotencyKeyResult.key
         }], { session });
 
         await createTransferLedgerEntries({
@@ -126,19 +200,46 @@ const transfer = async (req, res) => {
             session
         });
 
-        await session.commitTransaction();
-        transactionStarted = false;
-        res.json({
+        const responseBody = {
             success: true,
             message: "Transfer successful",
             data: {
                 transactionId: transaction._id
             }
+        };
+
+        await completeIdempotentRequest({
+            recordId: idempotencyRecord._id,
+            responseStatusCode: 200,
+            responseBody,
+            transactionId: transaction._id,
+            session
         });
+
+        await session.commitTransaction();
+        transactionStarted = false;
+        res.json(responseBody);
     } catch (error) {
         if (transactionStarted) {
             await session.abortTransaction();
+            transactionStarted = false;
         }
+
+        if (idempotencyRecord) {
+            try {
+                await failIdempotentRequest({
+                    recordId: idempotencyRecord._id,
+                    responseStatusCode: 500,
+                    responseBody: {
+                        success: false,
+                        message: "Internal server error"
+                    }
+                });
+            } catch (idempotencyError) {
+                console.error("Error marking idempotency request as failed:", idempotencyError);
+            }
+        }
+
         console.error("Error processing transfer:", error);
         return res.status(500).json({
             success: false,
