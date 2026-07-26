@@ -42,6 +42,7 @@ The project is built as a portfolio-grade product demo with a modern fintech int
 - Every wallet money movement now writes immutable double-entry ledger rows, including signup funding and peer-to-peer transfers.
 - `POST /account/transfer` requires an `Idempotency-Key` header so client retries replay the original result instead of moving money twice.
 - Transactions move through an explicit state machine: `CREATED`, `PROCESSING`, `SUCCESS`, `FAILED`, `REVERSED`, and `EXPIRED`.
+- Payment-provider webhooks are verified with HMAC signatures, timestamp replay windows, unique event IDs, and durable event logs.
 - Transfers validate positive amounts before entering the transaction flow, preventing negative-amount balance corruption.
 - API responses follow a consistent `success`, `message`, and `data` shape across most endpoints.
 - Transaction records include sender, receiver, amount, status, and timestamps.
@@ -134,10 +135,12 @@ REFRESH_TOKEN_SECRET=replace-with-another-long-random-secret
 REFRESH_TOKEN_EXPIRY=10d
 
 TURNSTILE_SECRET_KEY=
+WEBHOOK_SECRET=replace-with-provider-webhook-secret
 NODE_ENV=development
 ```
 
 `TURNSTILE_SECRET_KEY` is optional for local development. If it is missing, the backend middleware skips Turnstile verification and logs a warning.
+`WEBHOOK_SECRET` is optional outside production. If it is missing locally, webhook signature verification logs the event flow but skips HMAC comparison.
 
 ### 3. Configure the Frontend
 
@@ -223,6 +226,12 @@ All application API routes are mounted under `/api/v1`.
 | `GET` | `/api/v1/account/transactions` | Yes | Return sent and received transaction history |
 | `GET` | `/api/v1/account/ledger` | Yes | Return immutable debit/credit ledger entries for the authenticated user |
 
+### Webhook Routes
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/webhooks/payments` | Signature | Receive simulated payment-provider events with replay protection |
+
 ## Example Requests
 
 ### Signup
@@ -271,6 +280,33 @@ Idempotency-Key: 8f0f5c7e-1f6a-4d4c-97ea-f9d55d72ef80
   "amount": 500
 }
 ```
+
+### Payment Webhook
+
+The signature is `HMAC_SHA256(WEBHOOK_SECRET, "{timestamp}.{raw_json_body}")` and can be sent as either the raw hex digest or `sha256=<digest>`.
+
+```http
+POST /api/v1/webhooks/payments
+Content-Type: application/json
+X-PayPulse-Event-Id: evt_01J5PAYPULSE001
+X-PayPulse-Timestamp: <current-unix-timestamp-ms>
+X-PayPulse-Signature: sha256=<hmac-sha256>
+
+{
+  "type": "PAYMENT_REVERSED",
+  "data": {
+    "transactionId": "<transaction-object-id>",
+    "reason": "provider reversal"
+  }
+}
+```
+
+Supported webhook event types:
+
+- `PAYMENT_SUCCESS`
+- `PAYMENT_FAILED`
+- `PAYMENT_REVERSED`
+- `REFUND_PROCESSED`
 
 ## Data Models
 
@@ -324,6 +360,14 @@ Idempotency-Key: 8f0f5c7e-1f6a-4d4c-97ea-f9d55d72ef80
 - `status`: `processing`, `completed`, or `failed`
 - `responseStatusCode` and `responseBody` for replaying duplicate requests
 - `lockedUntil`, `expiresAt`
+
+### Webhook Event
+
+- `provider`, `eventId`, `eventType`
+- `payloadHash`, `signature`, `timestampHeader`
+- `status`: `received`, `processing`, `processed`, `failed`, or `ignored`
+- `transactionId`, `payload`
+- `attempts`, `lastError`, `processedAt`
 
 ## Product Flow
 

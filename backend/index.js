@@ -19,7 +19,12 @@ app.use(cors({
 // Cookie parser middleware
 app.use(cookieParser());
 
-app.use(express.json());
+// Feature: preserve raw JSON request bodies so webhook HMAC verification can use exact bytes.
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  }
+}));
 
 const port = process.env.PORT || 4000;
 
