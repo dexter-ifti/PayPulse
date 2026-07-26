@@ -5,6 +5,9 @@ const {
     createOrReplayWebhookEvent,
     processWebhookEvent
 } = require('../services/webhook.service');
+const { getDueWebhookRetries } = require('../services/retry.service');
+const { WebhookEvent } = require('../models/webhookEvent.model');
+const { DeadLetterEvent } = require('../models/deadLetterEvent.model');
 
 // Feature: signed payment-provider webhook endpoint with replay protection and idempotent event handling.
 const handlePaymentProviderWebhook = async (req, res) => {
@@ -91,6 +94,118 @@ const handlePaymentProviderWebhook = async (req, res) => {
     }
 };
 
+// Feature: inspect persisted webhook events for debugging provider callbacks and retry state.
+const listWebhookEvents = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+        const skip = (page - 1) * limit;
+        const status = req.query.status;
+        const query = status ? { status } : {};
+
+        const [events, totalEvents] = await Promise.all([
+            WebhookEvent.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            WebhookEvent.countDocuments(query)
+        ]);
+
+        return res.json({
+            success: true,
+            data: {
+                events,
+                pagination: {
+                    currentPage: page,
+                    totalPages: Math.ceil(totalEvents / limit),
+                    totalEvents,
+                    limit
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Error listing webhook events:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
+// Feature: manually process due webhook retries in bounded batches for local demos and worker-style execution.
+const processDueWebhookRetries = async (req, res) => {
+    try {
+        const limit = Math.min(parseInt(req.body?.limit || req.query.limit) || 25, 100);
+        const dueEvents = await getDueWebhookRetries({ limit });
+        const results = [];
+
+        for (const event of dueEvents) {
+            const processedEvent = await processWebhookEvent(event);
+            results.push({
+                eventId: processedEvent.eventId,
+                status: processedEvent.status,
+                attempts: processedEvent.attempts,
+                nextRetryAt: processedEvent.nextRetryAt,
+                lastError: processedEvent.lastError
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: "Due webhook retries processed",
+            data: {
+                processedCount: results.length,
+                results
+            }
+        });
+    } catch (error) {
+        console.error("Error processing webhook retries:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
+// Feature: inspect dead-lettered webhook events that need manual operator resolution.
+const listDeadLetterEvents = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+        const skip = (page - 1) * limit;
+
+        const [events, totalEvents] = await Promise.all([
+            DeadLetterEvent.find()
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            DeadLetterEvent.countDocuments()
+        ]);
+
+        return res.json({
+            success: true,
+            data: {
+                events,
+                pagination: {
+                    currentPage: page,
+                    totalPages: Math.ceil(totalEvents / limit),
+                    totalEvents,
+                    limit
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Error listing dead-letter events:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
 module.exports = {
-    handlePaymentProviderWebhook
+    handlePaymentProviderWebhook,
+    listWebhookEvents,
+    processDueWebhookRetries,
+    listDeadLetterEvents
 };
