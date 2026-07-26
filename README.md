@@ -44,6 +44,7 @@ The project is built as a portfolio-grade product demo with a modern fintech int
 - Transactions move through an explicit state machine: `CREATED`, `PROCESSING`, `SUCCESS`, `FAILED`, `REVERSED`, and `EXPIRED`.
 - Payment-provider webhooks are verified with HMAC signatures, timestamp replay windows, unique event IDs, and durable event logs.
 - Failed webhook processing is retried with backoff and moved to a dead-letter queue after repeated failure.
+- Reconciliation jobs detect mismatches between cached balances, ledger-derived balances, transaction ledger rows, and provider webhook state.
 - Transfers validate positive amounts before entering the transaction flow, preventing negative-amount balance corruption.
 - API responses follow a consistent `success`, `message`, and `data` shape across most endpoints.
 - Transaction records include sender, receiver, amount, status, and timestamps.
@@ -236,6 +237,14 @@ All application API routes are mounted under `/api/v1`.
 | `POST` | `/api/v1/webhooks/retries/process` | Yes | Process due webhook retries in a bounded batch |
 | `GET` | `/api/v1/webhooks/dead-letter` | Yes | Inspect webhook events that exceeded retry attempts |
 
+### Reconciliation Routes
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/reconciliation/run` | Yes | Run account, ledger, transaction, and provider-event reconciliation |
+| `GET` | `/api/v1/reconciliation/reports` | Yes | List reconciliation report summaries |
+| `GET` | `/api/v1/reconciliation/reports/:reportId` | Yes | Fetch a detailed reconciliation report |
+
 ## Example Requests
 
 ### Signup
@@ -386,6 +395,20 @@ Supported webhook event types:
 - Backoff schedule: `1s`, `5s`, `30s`, `5m`, `15m`
 - Due retries are processed through `POST /api/v1/webhooks/retries/process`
 - Events that still fail after max attempts are copied to the dead-letter queue
+
+### Reconciliation Report
+
+- `status`: `completed` or `failed`
+- `startedAt`, `completedAt`, `triggeredByUserId`
+- `summary`: counts for accounts, transactions, webhook events, and discrepancies
+- `discrepancies`: typed findings with severity, entity reference, expected value, actual value, and metadata
+- `errorMessage`: populated when the reconciliation job fails
+
+### Reconciliation Checks
+
+- Account cached balance must equal credit-minus-debit totals from wallet ledger rows.
+- Successful transactions must have ledger entries, balanced debit/credit totals, and totals matching transaction amount.
+- Processed provider webhook events must point to an existing transaction whose state matches the provider event.
 
 ## Product Flow
 
