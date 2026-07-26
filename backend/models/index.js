@@ -3,5 +3,6 @@ const Account = require('./account.model');
 const Transaction = require('./transaction.model');
 const LedgerEntry = require('./ledgerEntry.model');
 const IdempotencyKey = require('./idempotencyKey.model');
+const WebhookEvent = require('./webhookEvent.model');
 
-module.exports = { User, Account, Transaction, LedgerEntry, IdempotencyKey };
+module.exports = { User, Account, Transaction, LedgerEntry, IdempotencyKey, WebhookEvent };
