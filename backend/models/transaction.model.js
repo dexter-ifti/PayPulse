@@ -24,6 +24,11 @@ const transactionSchema = mongoose.Schema({
         type: String,
         enum: ['success', 'failed'],
         default: 'success'
+    },
+    idempotencyKey: {
+        type: String,
+        trim: true,
+        index: true
     }
 }, {
     timestamps: true

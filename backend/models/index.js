@@ -2,6 +2,6 @@ const User = require('./user.model');
 const Account = require('./account.model');
 const Transaction = require('./transaction.model');
 const LedgerEntry = require('./ledgerEntry.model');
+const IdempotencyKey = require('./idempotencyKey.model');
 
-module.exports = { User, Account, Transaction, LedgerEntry };
-
+module.exports = { User, Account, Transaction, LedgerEntry, IdempotencyKey };
