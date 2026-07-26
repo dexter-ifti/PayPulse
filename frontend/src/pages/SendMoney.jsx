@@ -14,6 +14,15 @@ const validateAmount = (value) => {
   return '';
 };
 
+// Feature: generate client idempotency keys so transfer retries do not duplicate money movement.
+const createIdempotencyKey = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+
 const SendMoney = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -23,6 +32,7 @@ const SendMoney = () => {
   const [loading, setLoading] = useState(false);
   const [amountError, setAmountError] = useState('');
   const [amountTouched, setAmountTouched] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState('');
 
   // Guard: a recipient (id + name) must be present. Direct navigation, a
   // refresh, or a stale bookmark can land here without params — show a
@@ -41,12 +51,20 @@ const SendMoney = () => {
     if (error) return;
 
     setLoading(true);
+    const transferIdempotencyKey = idempotencyKey || createIdempotencyKey();
+    if (!idempotencyKey) {
+      setIdempotencyKey(transferIdempotencyKey);
+    }
+
     try {
       await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/v1/account/transfer`, {
         to: id,
         amount: Number(amount)
       }, {
-        withCredentials: true // Send cookies with request
+        withCredentials: true, // Send cookies with request
+        headers: {
+          'Idempotency-Key': transferIdempotencyKey
+        }
       });
       toast.success("Transfer successful!");
       navigate('/dashboard');
@@ -117,6 +135,7 @@ const SendMoney = () => {
                   value={amount}
                   onChange={(e) => {
                     setAmount(e.target.value);
+                    setIdempotencyKey('');
                     if (amountTouched) setAmountError(validateAmount(e.target.value));
                   }}
                   onBlur={() => {
