@@ -33,7 +33,7 @@ const webhookEventSchema = mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['received', 'processing', 'processed', 'failed', 'ignored'],
+        enum: ['received', 'processing', 'processed', 'failed', 'retry_scheduled', 'dead_lettered', 'ignored'],
         default: 'received',
         index: true
     },
@@ -56,6 +56,13 @@ const webhookEventSchema = mongoose.Schema({
     },
     processedAt: {
         type: Date
+    },
+    nextRetryAt: {
+        type: Date,
+        index: true
+    },
+    deadLetteredAt: {
+        type: Date
     }
 }, {
     timestamps: true
@@ -63,6 +70,7 @@ const webhookEventSchema = mongoose.Schema({
 
 webhookEventSchema.index({ provider: 1, eventId: 1 }, { unique: true });
 webhookEventSchema.index({ status: 1, createdAt: -1 });
+webhookEventSchema.index({ status: 1, nextRetryAt: 1 });
 
 const WebhookEvent = mongoose.model('WebhookEvent', webhookEventSchema);
 
