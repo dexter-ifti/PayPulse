@@ -1,19 +1,24 @@
 const mongoose = require('mongoose');
 
 const transactionSchema = mongoose.Schema({
+    type: {
+        type: String,
+        enum: ['opening_balance', 'transfer'],
+        default: 'transfer',
+        index: true
+    },
     fromUserId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        ref: 'User'
     },
     toUserId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        ref: 'User'
     },
     amount: {
         type: Number,
-        required: true
+        required: true,
+        min: 0
     },
     status: {
         type: String,
@@ -23,6 +28,9 @@ const transactionSchema = mongoose.Schema({
 }, {
     timestamps: true
 });
+
+transactionSchema.index({ fromUserId: 1, createdAt: -1 });
+transactionSchema.index({ toUserId: 1, createdAt: -1 });
 
 const Transaction = mongoose.model('Transaction', transactionSchema);
 
