@@ -6,6 +6,7 @@ const {
     TRANSACTION_STATES,
     transitionTransactionState
 } = require('./transactionState.service');
+const { scheduleWebhookRetryOrDeadLetter } = require('./retry.service');
 
 const WEBHOOK_PROVIDER = 'paypulse-simulated-provider';
 const WEBHOOK_REPLAY_WINDOW_MS = 5 * 60 * 1000;
@@ -151,7 +152,9 @@ const createOrReplayWebhookEvent = async ({
 
 const markWebhookEvent = async ({ eventId, status, lastError }) => {
     const update = {
-        status
+        $set: {
+            status
+        }
     };
 
     if (status === 'processing') {
@@ -159,11 +162,11 @@ const markWebhookEvent = async ({ eventId, status, lastError }) => {
     }
 
     if (lastError) {
-        update.lastError = lastError;
+        update.$set.lastError = lastError;
     }
 
-    if (['processed', 'failed', 'ignored'].includes(status)) {
-        update.processedAt = new Date();
+    if (['processed', 'failed', 'dead_lettered', 'ignored'].includes(status)) {
+        update.$set.processedAt = new Date();
     }
 
     return WebhookEvent.findByIdAndUpdate(eventId, update, { new: true });
@@ -175,6 +178,15 @@ const EVENT_STATE_MAP = Object.freeze({
     PAYMENT_REVERSED: TRANSACTION_STATES.REVERSED,
     REFUND_PROCESSED: TRANSACTION_STATES.REVERSED
 });
+
+// Feature: webhook processing failures are scheduled for retry before moving to the dead-letter queue.
+const markWebhookFailureForRetry = async ({ webhookEvent, reason }) => {
+    const latestEvent = await WebhookEvent.findById(webhookEvent._id);
+    return scheduleWebhookRetryOrDeadLetter({
+        webhookEvent: latestEvent || webhookEvent,
+        reason
+    });
+};
 
 // Feature: idempotent webhook processing applies provider state changes only when the transaction transition is valid.
 const processWebhookEvent = async (webhookEvent) => {
@@ -197,10 +209,9 @@ const processWebhookEvent = async (webhookEvent) => {
         }
 
         if (!webhookEvent.payload?.transactionId) {
-            return markWebhookEvent({
-                eventId: webhookEvent._id,
-                status: 'failed',
-                lastError: 'Webhook payload is missing transactionId'
+            return markWebhookFailureForRetry({
+                webhookEvent,
+                reason: 'Webhook payload is missing transactionId'
             });
         }
 
@@ -210,10 +221,9 @@ const processWebhookEvent = async (webhookEvent) => {
 
         if (!transaction) {
             await session.abortTransaction();
-            return markWebhookEvent({
-                eventId: webhookEvent._id,
-                status: 'failed',
-                lastError: 'Transaction not found for webhook event'
+            return markWebhookFailureForRetry({
+                webhookEvent,
+                reason: 'Transaction not found for webhook event'
             });
         }
 
@@ -243,10 +253,9 @@ const processWebhookEvent = async (webhookEvent) => {
             await session.abortTransaction();
         }
 
-        return markWebhookEvent({
-            eventId: webhookEvent._id,
-            status: 'failed',
-            lastError: error.message
+        return markWebhookFailureForRetry({
+            webhookEvent,
+            reason: error.message
         });
     } finally {
         session.endSession();
@@ -259,5 +268,6 @@ module.exports = {
     validateWebhookHeaders,
     hashWebhookPayload,
     createOrReplayWebhookEvent,
-    processWebhookEvent
+    processWebhookEvent,
+    markWebhookEvent
 };

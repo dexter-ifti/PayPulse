@@ -43,6 +43,7 @@ The project is built as a portfolio-grade product demo with a modern fintech int
 - `POST /account/transfer` requires an `Idempotency-Key` header so client retries replay the original result instead of moving money twice.
 - Transactions move through an explicit state machine: `CREATED`, `PROCESSING`, `SUCCESS`, `FAILED`, `REVERSED`, and `EXPIRED`.
 - Payment-provider webhooks are verified with HMAC signatures, timestamp replay windows, unique event IDs, and durable event logs.
+- Failed webhook processing is retried with backoff and moved to a dead-letter queue after repeated failure.
 - Transfers validate positive amounts before entering the transaction flow, preventing negative-amount balance corruption.
 - API responses follow a consistent `success`, `message`, and `data` shape across most endpoints.
 - Transaction records include sender, receiver, amount, status, and timestamps.
@@ -231,6 +232,9 @@ All application API routes are mounted under `/api/v1`.
 | Method | Endpoint | Auth | Description |
 | --- | --- | --- | --- |
 | `POST` | `/api/v1/webhooks/payments` | Signature | Receive simulated payment-provider events with replay protection |
+| `GET` | `/api/v1/webhooks/events` | Yes | Inspect persisted webhook events and retry state |
+| `POST` | `/api/v1/webhooks/retries/process` | Yes | Process due webhook retries in a bounded batch |
+| `GET` | `/api/v1/webhooks/dead-letter` | Yes | Inspect webhook events that exceeded retry attempts |
 
 ## Example Requests
 
@@ -365,9 +369,23 @@ Supported webhook event types:
 
 - `provider`, `eventId`, `eventType`
 - `payloadHash`, `signature`, `timestampHeader`
-- `status`: `received`, `processing`, `processed`, `failed`, or `ignored`
+- `status`: `received`, `processing`, `processed`, `failed`, `retry_scheduled`, `dead_lettered`, or `ignored`
 - `transactionId`, `payload`
-- `attempts`, `lastError`, `processedAt`
+- `attempts`, `lastError`, `processedAt`, `nextRetryAt`, `deadLetteredAt`
+
+### Dead Letter Event
+
+- `sourceType`, `sourceId`
+- `provider`, `eventId`, `eventType`
+- `attempts`, `reason`, `payload`
+- `resolvedAt`, `resolutionNote`
+
+### Webhook Retry Policy
+
+- Max attempts: `5`
+- Backoff schedule: `1s`, `5s`, `30s`, `5m`, `15m`
+- Due retries are processed through `POST /api/v1/webhooks/retries/process`
+- Events that still fail after max attempts are copied to the dead-letter queue
 
 ## Product Flow
 
