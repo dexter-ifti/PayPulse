@@ -45,6 +45,7 @@ The project is built as a portfolio-grade product demo with a modern fintech int
 - Payment-provider webhooks are verified with HMAC signatures, timestamp replay windows, unique event IDs, and durable event logs.
 - Failed webhook processing is retried with backoff and moved to a dead-letter queue after repeated failure.
 - Reconciliation jobs detect mismatches between cached balances, ledger-derived balances, transaction ledger rows, and provider webhook state.
+- Sensitive endpoints are protected by named sliding-window rate-limit policies with `X-RateLimit-*` and `Retry-After` headers.
 - Transfers validate positive amounts before entering the transaction flow, preventing negative-amount balance corruption.
 - API responses follow a consistent `success`, `message`, and `data` shape across most endpoints.
 - Transaction records include sender, receiver, amount, status, and timestamps.
@@ -409,6 +410,20 @@ Supported webhook event types:
 - Account cached balance must equal credit-minus-debit totals from wallet ledger rows.
 - Successful transactions must have ledger entries, balanced debit/credit totals, and totals matching transaction amount.
 - Processed provider webhook events must point to an existing transaction whose state matches the provider event.
+
+### Rate Limiting
+
+Rate-limit responses return HTTP `429` with `Retry-After`, `X-RateLimit-Policy`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers.
+
+| Policy | Window | Limit | Applied To |
+| --- | --- | --- | --- |
+| `auth` | 15 minutes | 5 | Signup and signin |
+| `tokenRefresh` | 15 minutes | 20 | Refresh token |
+| `userSearch` | 1 minute | 30 | User directory search |
+| `transfer` | 1 minute | 10 | Money transfer |
+| `webhook` | 1 minute | 120 | Payment provider webhook |
+| `adminRead` | 1 minute | 60 | Webhook/reconciliation inspection endpoints |
+| `adminWrite` | 1 minute | 5 | Retry processing and reconciliation runs |
 
 ## Product Flow
 
